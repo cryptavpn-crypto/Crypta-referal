@@ -26,7 +26,39 @@ function loadData() {
   
   // Dati iniziali
   return {
-    users: [],
+    users: [
+      {
+        username: "admin",
+        referralCode: "ADMIN1",
+        points: 500,
+        referralCount: 3,
+        completedTasks: [
+          { taskId: 'twitter_follow', points: 50, completedAt: new Date() },
+          { taskId: 'twitter_post', points: 100, completedAt: new Date() },
+          { taskId: 'telegram_join', points: 75, completedAt: new Date() }
+        ],
+        referrals: [
+          { username: "user1", joinedAt: new Date() },
+          { username: "user2", joinedAt: new Date() },
+          { username: "user3", joinedAt: new Date() }
+        ],
+        createdAt: new Date()
+      },
+      {
+        username: "testuser",
+        referralCode: "TEST12",
+        points: 225,
+        referralCount: 1,
+        completedTasks: [
+          { taskId: 'twitter_follow', points: 50, completedAt: new Date() },
+          { taskId: 'telegram_join', points: 75, completedAt: new Date() }
+        ],
+        referrals: [
+          { username: "friend1", joinedAt: new Date() }
+        ],
+        createdAt: new Date()
+      }
+    ],
     tasks: [
       { id: 'twitter_follow', title: 'Segui CRYPTA VPN su X (Twitter)', points: 50 },
       { id: 'twitter_post', title: 'Posta e taggaci su X', points: 100 },
@@ -86,6 +118,7 @@ app.post("/api/referral/user/register", async (req, res) => {
       points: 0,
       referralCount: 0,
       completedTasks: [],
+      referrals: [],
       referredBy: referredBy || null,
       createdAt: new Date()
     };
@@ -98,7 +131,6 @@ app.post("/api/referral/user/register", async (req, res) => {
       if (referrer) {
         referrer.referralCount += 1;
         referrer.points += 150;
-        if (!referrer.referrals) referrer.referrals = [];
         referrer.referrals.push({ username, joinedAt: new Date() });
         saveData(); // SALVA I DATI
       }
@@ -167,22 +199,28 @@ app.get("/api/referral/leaderboard", async (req, res) => {
   }
 });
 
-// 🔍 **NUOVO ENDPOINT: Visualizza tutti i dati**
+// 🔍 ENDPOINT ADMIN: Visualizza tutti i dati
 app.get("/api/admin/data", (req, res) => {
   try {
     const stats = {
       total_users: memoryDB.users.length,
       total_points: memoryDB.users.reduce((sum, user) => sum + user.points, 0),
       total_referrals: memoryDB.users.reduce((sum, user) => sum + user.referralCount, 0),
+      total_completed_tasks: memoryDB.users.reduce((sum, user) => sum + user.completedTasks.length, 0),
       users: memoryDB.users.map(user => ({
         username: user.username,
         referralCode: user.referralCode,
         points: user.points,
         referralCount: user.referralCount,
-        completedTasks: user.completedTasks.length,
+        completedTasks: user.completedTasks.map(task => ({
+          taskId: task.taskId,
+          points: task.points,
+          completedAt: task.completedAt
+        })),
+        referrals: user.referrals || [],
         referredBy: user.referredBy,
         createdAt: user.createdAt
-      }))
+      })).sort((a, b) => b.points - a.points)
     };
     
     res.json({ success: true, data: stats });
@@ -191,12 +229,30 @@ app.get("/api/admin/data", (req, res) => {
   }
 });
 
-// 🔍 **NUOVO ENDPOINT: Download dati completi**
+// 🔍 ENDPOINT ADMIN: Download dati completi
 app.get("/api/admin/export", (req, res) => {
   try {
     res.setHeader('Content-Disposition', 'attachment; filename="crypta-data.json"');
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify(memoryDB, null, 2));
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// 🔍 ENDPOINT ADMIN: Reset dati (ATTENZIONE!)
+app.post("/api/admin/reset", (req, res) => {
+  try {
+    memoryDB = {
+      users: [],
+      tasks: [
+        { id: 'twitter_follow', title: 'Segui CRYPTA VPN su X (Twitter)', points: 50 },
+        { id: 'twitter_post', title: 'Posta e taggaci su X', points: 100 },
+        { id: 'telegram_join', title: 'Unisciti al canale Telegram', points: 75 }
+      ]
+    };
+    saveData();
+    res.json({ success: true, message: "Dati resettati con successo" });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -212,7 +268,12 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// Serve frontend
+// 🎯 PAGINA ADMIN - SERVE admin.html
+app.get("/admin", (req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'admin.html'));
+});
+
+// Serve frontend principale
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
@@ -220,8 +281,9 @@ app.get('*', (req, res) => {
 // Avvio server
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
-  console.log(`🌐 URL: https://crypta-referal.onrender.com`);
+  console.log(`🌐 Dashboard: https://crypta-referal.onrender.com`);
+  console.log(`👑 Admin Panel: https://crypta-referal.onrender.com/admin`);
+  console.log(`📊 API Data: https://crypta-referal.onrender.com/api/admin/data`);
   console.log(`💾 Database: JSON File (${memoryDB.users.length} utenti)`);
-  console.log('📊 Per vedere i dati visita: /api/admin/data');
-  console.log('💾 Per scaricare i dati: /api/admin/export');
+  console.log('✅ APPLICAZIONE COMPLETAMENTE FUNZIONANTE!');
 });
