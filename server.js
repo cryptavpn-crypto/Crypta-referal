@@ -8,44 +8,68 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
-const PORT = process.env.PORT || 10000; // Render usa spesso porte diverse
+const PORT = process.env.PORT || 10000;
 
 // MongoDB URI
 const MONGO_URI = "mongodb+srv://cryptavpn_db_user:zpW1ULdOntlv4uKN@crypta.fycuw0k.mongodb.net/crypta?retryWrites=true&w=majority";
-let db;
+let db = null;
+let client = null;
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Connessione MongoDB con timeout
+// Connessione MongoDB con ritry
 async function connectDB() {
   try {
     console.log('🔄 Tentativo di connessione a MongoDB...');
-    const client = new MongoClient(MONGO_URI, {
-      serverSelectionTimeoutMS: 5000,
-      connectTimeoutMS: 10000
+    
+    client = new MongoClient(MONGO_URI, {
+      serverSelectionTimeoutMS: 10000,
+      connectTimeoutMS: 30000,
+      maxPoolSize: 10,
+      retryWrites: true,
+      w: 'majority'
     });
     
     await client.connect();
     db = client.db();
     console.log('✅ Connesso a MongoDB');
     
+    // Test della connessione
+    await db.command({ ping: 1 });
+    console.log('✅ Ping MongoDB riuscito');
+    
     return true;
   } catch (error) {
     console.error('❌ Errore connessione MongoDB:', error.message);
+    
+    // Dettagli aggiuntivi per debug
+    if (error.name === 'MongoServerSelectionError') {
+      console.error('🔍 Problema di rete/whitelist IP');
+    } else if (error.name === 'MongoAuthenticationError') {
+      console.error('🔍 Problema di autenticazione');
+    }
+    
     return false;
   }
 }
 
+// Middleware per verificare il database
+app.use('/api/referral', (req, res, next) => {
+  if (!db) {
+    return res.json({ 
+      success: false, 
+      error: "Database temporaneamente non disponibile. Riprova tra qualche secondo." 
+    });
+  }
+  next();
+});
+
 // API Routes
 app.post("/api/referral/user/register", async (req, res) => {
   try {
-    if (!db) {
-      return res.json({ success: false, error: "Database non disponibile" });
-    }
-
     const { username, referredBy } = req.body;
     if (!username) {
       return res.json({ success: false, error: "Username richiesto" });
@@ -92,10 +116,6 @@ app.post("/api/referral/user/register", async (req, res) => {
 
 app.post("/api/referral/task/complete", async (req, res) => {
   try {
-    if (!db) {
-      return res.json({ success: false, error: "Database non disponibile" });
-    }
-
     const { username, taskId, points } = req.body;
     const user = await db.collection('users').findOne({ username });
     
@@ -132,10 +152,6 @@ app.post("/api/referral/task/complete", async (req, res) => {
 
 app.get("/api/referral/leaderboard", async (req, res) => {
   try {
-    if (!db) {
-      return res.json({ success: false, error: "Database non disponibile" });
-    }
-
     const limit = parseInt(req.query.limit) || 10;
     const leaderboard = await db.collection('users')
       .find({})
@@ -157,13 +173,31 @@ app.get("/api/referral/leaderboard", async (req, res) => {
   }
 });
 
-// Health check
-app.get("/api/health", (req, res) => {
-  res.json({ 
-    status: db ? "healthy" : "database_error",
-    database: db ? "connected" : "disconnected",
-    timestamp: new Date().toISOString()
-  });
+// Health check migliorato
+app.get("/api/health", async (req, res) => {
+  try {
+    if (db) {
+      await db.command({ ping: 1 });
+      res.json({ 
+        status: "healthy",
+        database: "connected",
+        timestamp: new Date().toISOString()
+      });
+    } else {
+      res.json({ 
+        status: "degraded",
+        database: "disconnected",
+        timestamp: new Date().toISOString()
+      });
+    }
+  } catch (error) {
+    res.json({ 
+      status: "error",
+      database: "connection_failed",
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 });
 
 // Serve frontend
@@ -171,30 +205,46 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Avvio server
-async function startServer() {
-  console.log('🔄 Avvio server...');
-  
-  const dbConnected = await connectDB();
-  
-  if (!dbConnected) {
-    console.log('⚠️  Server avviato senza database');
+// Riconnessione automatica
+async function initializeDatabase() {
+  let connected = false;
+  let attempts = 0;
+  const maxAttempts = 5;
+
+  while (!connected && attempts < maxAttempts) {
+    attempts++;
+    console.log(`🔄 Tentativo di connessione ${attempts}/${maxAttempts}...`);
+    
+    connected = await connectDB();
+    
+    if (!connected) {
+      console.log(`⏳ Attesa 5 secondi prima del prossimo tentativo...`);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
   }
-  
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
-    console.log(`📊 Database: ${dbConnected ? 'CONNESSO' : 'NON CONNESSO'}`);
-  });
+
+  if (!connected) {
+    console.log('❌ Impossibile connettersi a MongoDB dopo tutti i tentativi');
+  }
 }
 
-// Gestione errori non catturati
-process.on('unhandledRejection', (err) => {
-  console.error('❌ Errore non gestito:', err);
-});
-
-process.on('uncaughtException', (err) => {
-  console.error('❌ Eccezione non catturata:', err);
-});
+// Avvio server
+async function startServer() {
+  console.log('🔄 Avvio server CRYPTA...');
+  
+  // Avvia il server anche senza DB
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
+    console.log(`🌐 URL: https://crypta-referal.onrender.com`);
+  });
+  
+  // Prova a connettere il DB in background
+  initializeDatabase().then(() => {
+    if (db) {
+      console.log('🎉 Database connesso con successo!');
+    }
+  });
+}
 
 startServer().catch(error => {
   console.error('❌ Errore avvio server:', error);
