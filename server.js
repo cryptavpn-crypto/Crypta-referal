@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import { MongoClient } from "mongodb";
+import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 
@@ -10,78 +10,76 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const PORT = process.env.PORT || 10000;
 
-// MongoDB URI
-const MONGO_URI = "mongodb+srv://cryptavpn_db_user:zpW1ULdOntlv4uKN@crypta.fycuw0k.mongodb.net/crypta?retryWrites=true&w=majority";
-let db = null;
-let client = null;
+// File per salvare i dati
+const DATA_FILE = path.join(__dirname, 'data.json');
+
+// Carica dati esistenti o inizializza
+function loadData() {
+  try {
+    if (fs.existsSync(DATA_FILE)) {
+      const data = fs.readFileSync(DATA_FILE, 'utf8');
+      return JSON.parse(data);
+    }
+  } catch (error) {
+    console.error('Errore caricamento dati:', error);
+  }
+  
+  // Dati iniziali
+  return {
+    users: [],
+    tasks: [
+      { id: 'twitter_follow', title: 'Segui CRYPTA VPN su X (Twitter)', points: 50 },
+      { id: 'twitter_post', title: 'Posta e taggaci su X', points: 100 },
+      { id: 'telegram_join', title: 'Unisciti al canale Telegram', points: 75 }
+    ]
+  };
+}
+
+// Salva dati
+function saveData() {
+  try {
+    fs.writeFileSync(DATA_FILE, JSON.stringify(memoryDB, null, 2));
+    console.log('💾 Dati salvati su file');
+  } catch (error) {
+    console.error('Errore salvataggio dati:', error);
+  }
+}
+
+let memoryDB = loadData();
 
 // Middleware
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Connessione MongoDB con ritry
-async function connectDB() {
-  try {
-    console.log('🔄 Tentativo di connessione a MongoDB...');
-    
-    client = new MongoClient(MONGO_URI, {
-      serverSelectionTimeoutMS: 10000,
-      connectTimeoutMS: 30000,
-      maxPoolSize: 10,
-      retryWrites: true,
-      w: 'majority'
-    });
-    
-    await client.connect();
-    db = client.db();
-    console.log('✅ Connesso a MongoDB');
-    
-    // Test della connessione
-    await db.command({ ping: 1 });
-    console.log('✅ Ping MongoDB riuscito');
-    
-    return true;
-  } catch (error) {
-    console.error('❌ Errore connessione MongoDB:', error.message);
-    
-    // Dettagli aggiuntivi per debug
-    if (error.name === 'MongoServerSelectionError') {
-      console.error('🔍 Problema di rete/whitelist IP');
-    } else if (error.name === 'MongoAuthenticationError') {
-      console.error('🔍 Problema di autenticazione');
-    }
-    
-    return false;
-  }
+// Funzioni helper
+function generateReferralCode() {
+  return Math.random().toString(36).substring(2, 8).toUpperCase();
 }
 
-// Middleware per verificare il database
-app.use('/api/referral', (req, res, next) => {
-  if (!db) {
-    return res.json({ 
-      success: false, 
-      error: "Database temporaneamente non disponibile. Riprova tra qualche secondo." 
-    });
-  }
-  next();
-});
+function findUserByUsername(username) {
+  return memoryDB.users.find(user => user.username === username);
+}
+
+function findUserByReferralCode(code) {
+  return memoryDB.users.find(user => user.referralCode === code);
+}
 
 // API Routes
 app.post("/api/referral/user/register", async (req, res) => {
   try {
     const { username, referredBy } = req.body;
+    
     if (!username) {
       return res.json({ success: false, error: "Username richiesto" });
     }
 
-    const existingUser = await db.collection('users').findOne({ username });
+    const existingUser = findUserByUsername(username);
     if (existingUser) {
       return res.json({ success: true, user: existingUser });
     }
 
-    const referralCode = Math.random().toString(36).substring(2, 8).toUpperCase();
-    
+    const referralCode = generateReferralCode();
     const newUser = {
       username,
       referralCode,
@@ -92,22 +90,23 @@ app.post("/api/referral/user/register", async (req, res) => {
       createdAt: new Date()
     };
 
-    await db.collection('users').insertOne(newUser);
+    memoryDB.users.push(newUser);
+    saveData(); // SALVA I DATI
 
     if (referredBy) {
-      const referrer = await db.collection('users').findOne({ referralCode: referredBy });
+      const referrer = findUserByReferralCode(referredBy);
       if (referrer) {
-        await db.collection('users').updateOne(
-          { referralCode: referredBy },
-          { 
-            $inc: { referralCount: 1, points: 150 },
-            $push: { referrals: { username, joinedAt: new Date() } }
-          }
-        );
+        referrer.referralCount += 1;
+        referrer.points += 150;
+        if (!referrer.referrals) referrer.referrals = [];
+        referrer.referrals.push({ username, joinedAt: new Date() });
+        saveData(); // SALVA I DATI
       }
     }
 
+    console.log(`✅ Nuovo utente: ${username}`);
     res.json({ success: true, user: newUser });
+    
   } catch (error) {
     console.error('Errore registrazione:', error);
     res.json({ success: false, error: "Errore interno del server" });
@@ -117,8 +116,8 @@ app.post("/api/referral/user/register", async (req, res) => {
 app.post("/api/referral/task/complete", async (req, res) => {
   try {
     const { username, taskId, points } = req.body;
-    const user = await db.collection('users').findOne({ username });
     
+    const user = findUserByUsername(username);
     if (!user) {
       return res.json({ success: false, error: "Utente non trovato" });
     }
@@ -128,22 +127,18 @@ app.post("/api/referral/task/complete", async (req, res) => {
       return res.json({ success: false, error: "Task già completato" });
     }
 
-    const updatedUser = await db.collection('users').findOneAndUpdate(
-      { username },
-      {
-        $push: { 
-          completedTasks: { 
-            taskId, 
-            points,
-            completedAt: new Date()
-          } 
-        },
-        $inc: { points: points }
-      },
-      { returnDocument: 'after' }
-    );
+    user.completedTasks.push({
+      taskId,
+      points,
+      completedAt: new Date()
+    });
+    user.points += points;
+    
+    saveData(); // SALVA I DATI
 
-    res.json({ success: true, user: updatedUser.value });
+    console.log(`✅ Task completato: ${username} - ${taskId}`);
+    res.json({ success: true, user });
+    
   } catch (error) {
     console.error('Errore completamento task:', error);
     res.json({ success: false, error: "Errore interno del server" });
@@ -153,51 +148,68 @@ app.post("/api/referral/task/complete", async (req, res) => {
 app.get("/api/referral/leaderboard", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const leaderboard = await db.collection('users')
-      .find({})
-      .sort({ points: -1 })
-      .limit(limit)
-      .toArray();
+    
+    const leaderboard = [...memoryDB.users]
+      .sort((a, b) => b.points - a.points)
+      .slice(0, limit)
+      .map((user, index) => ({
+        username: user.username,
+        points: user.points,
+        referralCount: user.referralCount,
+        rank: index + 1
+      }));
 
-    const rankedLeaderboard = leaderboard.map((user, index) => ({
-      username: user.username,
-      points: user.points || 0,
-      referralCount: user.referralCount || 0,
-      rank: index + 1
-    }));
-
-    res.json({ success: true, leaderboard: rankedLeaderboard });
+    res.json({ success: true, leaderboard });
+    
   } catch (error) {
     console.error('Errore leaderboard:', error);
     res.json({ success: false, error: "Errore interno del server" });
   }
 });
 
-// Health check migliorato
-app.get("/api/health", async (req, res) => {
+// 🔍 **NUOVO ENDPOINT: Visualizza tutti i dati**
+app.get("/api/admin/data", (req, res) => {
   try {
-    if (db) {
-      await db.command({ ping: 1 });
-      res.json({ 
-        status: "healthy",
-        database: "connected",
-        timestamp: new Date().toISOString()
-      });
-    } else {
-      res.json({ 
-        status: "degraded",
-        database: "disconnected",
-        timestamp: new Date().toISOString()
-      });
-    }
+    const stats = {
+      total_users: memoryDB.users.length,
+      total_points: memoryDB.users.reduce((sum, user) => sum + user.points, 0),
+      total_referrals: memoryDB.users.reduce((sum, user) => sum + user.referralCount, 0),
+      users: memoryDB.users.map(user => ({
+        username: user.username,
+        referralCode: user.referralCode,
+        points: user.points,
+        referralCount: user.referralCount,
+        completedTasks: user.completedTasks.length,
+        referredBy: user.referredBy,
+        createdAt: user.createdAt
+      }))
+    };
+    
+    res.json({ success: true, data: stats });
   } catch (error) {
-    res.json({ 
-      status: "error",
-      database: "connection_failed",
-      error: error.message,
-      timestamp: new Date().toISOString()
-    });
+    res.json({ success: false, error: error.message });
   }
+});
+
+// 🔍 **NUOVO ENDPOINT: Download dati completi**
+app.get("/api/admin/export", (req, res) => {
+  try {
+    res.setHeader('Content-Disposition', 'attachment; filename="crypta-data.json"');
+    res.setHeader('Content-Type', 'application/json');
+    res.send(JSON.stringify(memoryDB, null, 2));
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// Health check
+app.get("/api/health", (req, res) => {
+  res.json({ 
+    status: "healthy",
+    database: "json_file",
+    users_count: memoryDB.users.length,
+    timestamp: new Date().toISOString()
+  });
 });
 
 // Serve frontend
@@ -205,48 +217,11 @@ app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Riconnessione automatica
-async function initializeDatabase() {
-  let connected = false;
-  let attempts = 0;
-  const maxAttempts = 5;
-
-  while (!connected && attempts < maxAttempts) {
-    attempts++;
-    console.log(`🔄 Tentativo di connessione ${attempts}/${maxAttempts}...`);
-    
-    connected = await connectDB();
-    
-    if (!connected) {
-      console.log(`⏳ Attesa 5 secondi prima del prossimo tentativo...`);
-      await new Promise(resolve => setTimeout(resolve, 5000));
-    }
-  }
-
-  if (!connected) {
-    console.log('❌ Impossibile connettersi a MongoDB dopo tutti i tentativi');
-  }
-}
-
 // Avvio server
-async function startServer() {
-  console.log('🔄 Avvio server CRYPTA...');
-  
-  // Avvia il server anche senza DB
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
-    console.log(`🌐 URL: https://crypta-referal.onrender.com`);
-  });
-  
-  // Prova a connettere il DB in background
-  initializeDatabase().then(() => {
-    if (db) {
-      console.log('🎉 Database connesso con successo!');
-    }
-  });
-}
-
-startServer().catch(error => {
-  console.error('❌ Errore avvio server:', error);
-  process.exit(1);
+app.listen(PORT, '0.0.0.0', () => {
+  console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
+  console.log(`🌐 URL: https://crypta-referal.onrender.com`);
+  console.log(`💾 Database: JSON File (${memoryDB.users.length} utenti)`);
+  console.log('📊 Per vedere i dati visita: /api/admin/data');
+  console.log('💾 Per scaricare i dati: /api/admin/export');
 });
