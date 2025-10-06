@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CRYPTA Admin</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gray-100 p-8">
+    <div class="max-w-4xl mx-auto">
+        <h1 class="text-3xl font-bold mb-6">CRYPTA - Admin Dashboard</h1>
+        
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold">Utenti Totali</h3>
+                <div id="totalUsers" class="text-2xl">-</div>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold">Punti Totali</h3>
+                <div id="totalPoints" class="text-2xl">-</div>
+            </div>
+            <div class="bg-white p-4 rounded shadow">
+                <h3 class="font-semibold">Referral Totali</h3>
+                <div id="totalReferrals" class="text-2xl">-</div>
+            </div>
+        </div>
+
+        <div class="bg-white p-4 rounded shadow">
+            <h3 class="font-semibold mb-4">Lista Utenti</h3>
+            <div id="usersList"></div>
+        </div>
+
+        <div class="mt-4">
+            <a href="/api/admin/export" class="bg-blue-500 text-white px-4 py-2 rounded">
+                📥 Scarica Dati Completi
+            </a>
+        </div>
+    </div>
+
+    <script>
+        async function loadData() {
+            try {
+                const response = await fetch('/api/admin/data');
+                const data = await response.json();
+                
+                if (data.success) {
+                    document.getElementById('totalUsers').textContent = data.data.total_users;
+                    document.getElementById('totalPoints').textContent = data.data.total_points;
+                    document.getElementById('totalReferrals').textContent = data.data.total_referrals;
+                    
+                    const usersList = document.getElementById('usersList');
+                    usersList.innerHTML = data.data.users.map(user => `
+                        <div class="border-b py-2">
+                            <div class="font-semibold">${user.username}</div>
+                            <div class="text-sm text-gray-600">
+                                Codice: ${user.referralCode} | 
+                                Punti: ${user.points} | 
+                                Referral: ${user.referralCount} |
+                                Tasks: ${user.completedTasks}
+                            </div>
+                        </div>
+                    `).join('');
+                }
+            } catch (error) {
+                console.error('Errore:', error);
+            }
+        }
+        
+        loadData();
+        setInterval(loadData, 10000); // Aggiorna ogni 10 secondi
+    </script>
+</body>
+</html>
