@@ -333,7 +333,7 @@ app.post("/api/admin/reject-task", async (req, res) => {
   }
 });
 
-// 📊 Leaderboard with REAL data and emails
+// 📊 Leaderboard for USERS (NO EMAILS - PRIVACY PROTECTED)
 app.get("/api/referral/leaderboard", async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 20;
@@ -342,7 +342,6 @@ app.get("/api/referral/leaderboard", async (req, res) => {
     const leaderboard = memoryDB.users
       .map(user => ({
         username: user.username,
-        email: user.email,
         points: calculateTotalPoints(user),
         referralCount: user.referralCount || 0,
         completedTasks: (user.completedTasks || []).length,
@@ -359,6 +358,36 @@ app.get("/api/referral/leaderboard", async (req, res) => {
     
   } catch (error) {
     console.error('Leaderboard error:', error);
+    res.json({ success: false, error: "Internal server error" });
+  }
+});
+
+// 👑 ADMIN Leaderboard with emails (separate endpoint)
+app.get("/api/admin/leaderboard", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 20;
+    
+    // Calculate total points for all users and sort
+    const leaderboard = memoryDB.users
+      .map(user => ({
+        username: user.username,
+        email: user.email, // ONLY FOR ADMIN
+        points: calculateTotalPoints(user),
+        referralCount: user.referralCount || 0,
+        completedTasks: (user.completedTasks || []).length,
+        joinedAt: user.createdAt
+      }))
+      .sort((a, b) => b.points - a.points)
+      .slice(0, limit)
+      .map((user, index) => ({
+        ...user,
+        rank: index + 1
+      }));
+
+    res.json({ success: true, leaderboard });
+    
+  } catch (error) {
+    console.error('Admin leaderboard error:', error);
     res.json({ success: false, error: "Internal server error" });
   }
 });
@@ -408,6 +437,30 @@ app.get("/api/admin/pending-verifications", (req, res) => {
   }
 });
 
+// 👑 ADMIN: Export CSV with emails
+app.get("/api/admin/export-csv", (req, res) => {
+  try {
+    const usersWithTotals = memoryDB.users.map(user => ({
+      ...user,
+      totalPoints: calculateTotalPoints(user)
+    })).sort((a, b) => b.totalPoints - a.totalPoints);
+
+    const csvHeaders = "Rank,Username,Email,Telegram,Total Points,Task Points,Referral Points,Referral Count,Completed Tasks,Registration Date,Last Active\n";
+    
+    const csvData = usersWithTotals.map((user, index) => 
+      `${index + 1},"${user.username}","${user.email}","${user.telegram || ''}",${user.totalPoints},${(user.completedTasks || []).reduce((sum, task) => sum + task.points, 0)},${(user.referralCount || 0) * 150},${user.referralCount || 0},${(user.completedTasks || []).length},"${new Date(user.createdAt).toLocaleDateString('en-US')}","${new Date(user.lastActive).toLocaleDateString('en-US')}"`
+    ).join('\n');
+    
+    const csv = csvHeaders + csvData;
+    
+    res.setHeader('Content-Disposition', 'attachment; filename="crypta-users-with-emails.csv"');
+    res.setHeader('Content-Type', 'text/csv');
+    res.send(csv);
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
 // Health check
 app.get("/api/health", (req, res) => {
   res.json({ 
@@ -436,6 +489,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🌐 Dashboard: https://crypta-referal.onrender.com`);
   console.log(`👑 Admin Panel: https://crypta-referal.onrender.com/admin`);
   console.log(`✅ 100% REAL manual verification system enabled`);
-  console.log(`📧 User emails are fully visible in admin panel`);
+  console.log(`🔒 User privacy: Emails hidden from public leaderboard`);
+  console.log(`📧 Admin only: Full email access in admin panel`);
   console.log(`📊 Registered users: ${memoryDB.users.length}`);
 });
