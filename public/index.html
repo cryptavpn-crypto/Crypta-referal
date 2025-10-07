@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="it">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -42,7 +42,7 @@
                         id="loginBtn"
                         class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition-all"
                     >
-                        Accedi
+                        Login
                     </button>
                     <div class="text-right">
                         <div class="text-sm text-gray-400">Total Points</div>
@@ -55,40 +55,40 @@
         <!-- Login/Register -->
         <div id="loginSection" class="container mx-auto px-4 py-20 max-w-md">
             <div class="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-sm rounded-xl p-8 border border-purple-500/30 glow">
-                <h2 class="text-3xl font-bold mb-6 text-center">Benvenuto in CRYPTA</h2>
+                <h2 class="text-3xl font-bold mb-6 text-center">Welcome to CRYPTA</h2>
                 <p class="text-gray-300 text-center mb-6 text-sm">
-                    Inserisci i tuoi dati per ricevere i premi!
+                    Enter your details to receive rewards!
                 </p>
                 <div class="space-y-4">
                     <input 
                         type="text" 
                         id="usernameInput" 
-                        placeholder="Username (obbligatorio)"
+                        placeholder="Username (required)"
                         class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
                     />
                     <input 
                         type="email" 
                         id="emailInput" 
-                        placeholder="Email (obbligatorio per i premi)"
+                        placeholder="Email (required for rewards)"
                         class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
                     />
                     <input 
                         type="text" 
                         id="telegramInput" 
-                        placeholder="Telegram @username (opzionale)"
+                        placeholder="Telegram @username (optional)"
                         class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
                     />
                     <input 
                         type="text" 
                         id="referralInput" 
-                        placeholder="Codice referral (opzionale)"
+                        placeholder="Referral code (optional)"
                         class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
                     />
                     <button 
                         onclick="register()"
                         class="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-semibold transition-all"
                     >
-                        Inizia a Guadagnare
+                        Start Earning
                     </button>
                 </div>
                 <div class="mt-4 text-center">
@@ -96,19 +96,19 @@
                         onclick="showLoginForm()"
                         class="text-blue-400 hover:text-blue-300 text-sm"
                     >
-                        Hai già un account? Accedi qui
+                        Already have an account? Login here
                     </button>
                 </div>
                 <div class="mt-4 text-center text-xs text-gray-400">
-                    <p>La tua email sarà utilizzata solo per contattarti e consegnare i premi</p>
+                    <p>Your email will only be used to contact you and deliver rewards</p>
                 </div>
             </div>
         </div>
 
-        <!-- Login per utenti esistenti -->
+        <!-- Login for existing users -->
         <div id="loginExistingSection" class="container mx-auto px-4 py-20 max-w-md hidden">
             <div class="bg-gradient-to-br from-blue-600/20 to-green-600/20 backdrop-blur-sm rounded-xl p-8 border border-blue-500/30 glow">
-                <h2 class="text-2xl font-bold mb-6 text-center">Accedi al Tuo Account</h2>
+                <h2 class="text-2xl font-bold mb-6 text-center">Login to Your Account</h2>
                 <div class="space-y-4">
                     <input 
                         type="text" 
@@ -116,7 +116,7 @@
                         placeholder="Username"
                         class="w-full bg-black/50 border border-blue-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
                     />
-                    <div class="text-center text-gray-300 text-sm">oppure</div>
+                    <div class="text-center text-gray-300 text-sm">or</div>
                     <input 
                         type="email" 
                         id="loginEmailInput" 
@@ -127,13 +127,13 @@
                         onclick="loginExistingUser()"
                         class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition-all"
                     >
-                        Accedi al Account
+                        Login to Account
                     </button>
                     <button 
                         onclick="showRegisterForm()"
                         class="w-full bg-gray-600 hover:bg-gray-700 py-3 rounded-lg font-semibold transition-all"
                     >
-                        Nuovo Utente? Registrati
+                        New User? Register
                     </button>
                 </div>
             </div>
@@ -145,36 +145,40 @@
             <div class="bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30 mb-8">
                 <div class="flex justify-between items-center">
                     <div>
-                        <h2 class="text-xl font-bold">👋 Benvenuto, <span id="userName" class="text-purple-400"></span>!</h2>
+                        <h2 class="text-xl font-bold">👋 Welcome, <span id="userName" class="text-purple-400"></span>!</h2>
                         <p class="text-gray-300 text-sm mt-1">
                             Email: <span id="userEmail" class="text-green-400"></span>
                             <span id="userTelegram" class="ml-3"></span>
                         </p>
                     </div>
                     <div class="text-right">
-                        <div class="text-sm text-gray-400">Il tuo codice</div>
+                        <div class="text-sm text-gray-400">Your code</div>
                         <div class="text-lg font-bold text-yellow-400" id="userReferralCode">-</div>
                         <button 
                             onclick="logout()"
                             class="text-xs text-gray-400 hover:text-gray-300 mt-1"
                         >
-                            Esci
+                            Logout
                         </button>
                     </div>
                 </div>
             </div>
 
             <!-- Stats Cards -->
-            <div class="grid md:grid-cols-3 gap-4 mb-8">
+            <div class="grid md:grid-cols-4 gap-4 mb-8">
                 <div class="bg-gradient-to-br from-purple-600/20 to-purple-800/20 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
+                    <div class="text-gray-300 mb-2">Total Points</div>
+                    <div class="text-3xl font-bold" id="totalPointsCard">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-600/20 to-blue-800/20 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
                     <div class="text-gray-300 mb-2">Task Points</div>
                     <div class="text-3xl font-bold" id="taskPoints">0</div>
                 </div>
-                <div class="bg-gradient-to-br from-blue-600/20 to-blue-800/20 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+                <div class="bg-gradient-to-br from-green-600/20 to-green-800/20 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
                     <div class="text-gray-300 mb-2">Referrals</div>
                     <div class="text-3xl font-bold" id="referralCount">0</div>
                 </div>
-                <div class="bg-gradient-to-br from-green-600/20 to-green-800/20 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
+                <div class="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
                     <div class="text-gray-300 mb-2">Referral Points</div>
                     <div class="text-3xl font-bold" id="referralPoints">0</div>
                     <div class="text-xs text-gray-400 mt-1">150 pts per referral</div>
@@ -244,34 +248,37 @@
         const tasks = [
             { 
                 id: 'twitter_follow', 
-                title: 'Segui CRYPTA VPN su X (Twitter)', 
+                title: 'Follow CRYPTA VPN on X (Twitter)', 
                 points: 50, 
                 icon: '🐦',
                 link: 'https://x.com/cryptavpn?s=21',
-                description: 'Clicca qui per seguire il nostro profilo Twitter',
-                buttonText: 'Segui su X'
+                description: 'Click here to follow our Twitter profile',
+                buttonText: 'Follow on X',
+                verificationNote: 'Please complete the follow action first, then verify'
             },
             { 
                 id: 'twitter_post', 
-                title: 'Posta e taggaci su X', 
+                title: 'Post and tag us on X', 
                 points: 100, 
                 icon: '📱',
-                link: 'https://x.com/intent/tweet?text=Scopri%20CRYPTA%20VPN%20-%20La%20privacy%20è%20un%20diritto%20fundamentale!%20%40cryptavpn%20%F0%9F%94%92%EF%B8%8F',
-                description: 'Crea un post taggando @cryptavpn',
-                buttonText: 'Posta su X'
+                link: 'https://x.com/intent/tweet?text=Discover%20CRYPTA%20VPN%20-%20Privacy%20is%20a%20fundamental%20right!%20%40cryptavpn%20%F0%9F%94%92%EF%B8%8F',
+                description: 'Create a post tagging @cryptavpn',
+                buttonText: 'Post on X',
+                verificationNote: 'Please make the post first, then verify'
             },
             { 
                 id: 'telegram_join', 
-                title: 'Unisciti al canale Telegram', 
+                title: 'Join Telegram Channel', 
                 points: 75, 
                 icon: '✈️',
                 link: 'https://t.me/cryptacommunityvpn',
-                description: 'Unisciti alla nostra community Telegram',
-                buttonText: 'Unisciti a Telegram'
+                description: 'Join our Telegram community',
+                buttonText: 'Join Telegram',
+                verificationNote: 'Please join the channel first, then verify'
             }
         ];
 
-        // Funzioni per la navigazione
+        // Navigation functions
         function showLoginForm() {
             document.getElementById('loginSection').classList.add('hidden');
             document.getElementById('loginExistingSection').classList.remove('hidden');
@@ -307,7 +314,7 @@
             clearLoginForms();
         }
 
-        // Registrazione nuovo utente
+        // Register new user
         async function register() {
             const username = document.getElementById('usernameInput').value.trim();
             const email = document.getElementById('emailInput').value.trim();
@@ -315,17 +322,17 @@
             const referredBy = document.getElementById('referralInput').value.trim();
 
             if (!username) {
-                alert('Inserisci un username!');
+                alert('Please enter a username!');
                 return;
             }
 
             if (!email) {
-                alert('Inserisci la tua email per ricevere i premi!');
+                alert('Please enter your email to receive rewards!');
                 return;
             }
 
             if (!email.includes('@') || !email.includes('.')) {
-                alert('Inserisci un\'email valida!');
+                alert('Please enter a valid email address!');
                 return;
             }
 
@@ -346,24 +353,24 @@
                     loadDashboard();
                 } else {
                     if (data.suggestion) {
-                        alert('Errore: ' + data.error + '\n' + data.suggestion);
+                        alert('Error: ' + data.error + '\n' + data.suggestion);
                     } else {
-                        alert('Errore: ' + data.error);
+                        alert('Error: ' + data.error);
                     }
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Errore di connessione al server!');
+                alert('Server connection error!');
             }
         }
 
-        // Login utente esistente
+        // Login existing user
         async function loginExistingUser() {
             const username = document.getElementById('loginUsernameInput').value.trim();
             const email = document.getElementById('loginEmailInput').value.trim();
 
             if (!username && !email) {
-                alert('Inserisci username o email!');
+                alert('Please enter username or email!');
                 return;
             }
 
@@ -383,15 +390,15 @@
                     document.getElementById('dashboardSection').classList.remove('hidden');
                     loadDashboard();
                 } else {
-                    alert('Errore: ' + data.error);
+                    alert('Error: ' + data.error);
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Errore di connessione al server!');
+                alert('Server connection error!');
             }
         }
 
-        // Carica la dashboard
+        // Load dashboard
         function loadDashboard() {
             // Update user info
             document.getElementById('userName').textContent = currentUser.username;
@@ -404,11 +411,17 @@
                 document.getElementById('userTelegram').innerHTML = '';
             }
 
+            // Calculate points
+            const taskPoints = calculateTaskPoints();
+            const referralPoints = (currentUser.referralCount || 0) * 150;
+            const totalPoints = taskPoints + referralPoints;
+
             // Update stats
-            document.getElementById('totalPoints').textContent = currentUser.points || 0;
-            document.getElementById('taskPoints').textContent = calculateTaskPoints();
+            document.getElementById('totalPoints').textContent = totalPoints;
+            document.getElementById('totalPointsCard').textContent = totalPoints;
+            document.getElementById('taskPoints').textContent = taskPoints;
             document.getElementById('referralCount').textContent = currentUser.referralCount || 0;
-            document.getElementById('referralPoints').textContent = (currentUser.referralCount || 0) * 150;
+            document.getElementById('referralPoints').textContent = referralPoints;
             document.getElementById('referralLink').value = `${window.location.origin}?ref=${currentUser.referralCode}`;
 
             // Load tasks
@@ -443,6 +456,7 @@
                                         <span class="text-yellow-400 font-bold">+${task.points} points</span>
                                         ${isCompleted ? '<span class="text-green-400 text-sm">✓ Completed</span>' : ''}
                                     </div>
+                                    ${!isCompleted ? `<p class="text-xs text-orange-400 mt-1">${task.verificationNote}</p>` : ''}
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
@@ -460,7 +474,7 @@
                                     class="complete-task-btn px-4 py-2 rounded-lg font-semibold transition-all text-sm ${isCompleted ? 'bg-green-600/50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}"
                                     data-taskid="${task.id}"
                                 >
-                                    ${isCompleted ? 'Completato' : 'Verifica Task'}
+                                    ${isCompleted ? 'Completed' : 'Verify Task'}
                                 </button>
                             </div>
                         </div>
@@ -481,12 +495,12 @@
             document.getElementById('progressBar').style.width = `${percentage}%`;
         }
 
-        // Verifica automatica task
+        // Verify task completion
         async function completeTask(taskId, points, button) {
             try {
-                // Mostra loading
+                // Show loading
                 button.disabled = true;
-                button.innerHTML = '⏳ Verificando...';
+                button.innerHTML = '⏳ Verifying...';
                 button.classList.add('loading');
 
                 const response = await fetch(`${API_URL}/task/verify`, {
@@ -503,18 +517,18 @@
                 if (data.success) {
                     currentUser = data.user;
                     loadDashboard();
-                    alert(data.message);
+                    alert(`✅ Task verified! +${data.points} points awarded!`);
                 } else {
-                    alert(data.error);
+                    alert(`❌ ${data.error}\n\nPlease make sure you completed the action and try again.`);
                     button.disabled = false;
-                    button.innerHTML = 'Verifica Task';
+                    button.innerHTML = 'Verify Task';
                     button.classList.remove('loading');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Errore nella verifica della task!');
+                alert('Error verifying task! Please try again.');
                 button.disabled = false;
-                button.innerHTML = 'Verifica Task';
+                button.innerHTML = 'Verify Task';
                 button.classList.remove('loading');
             }
         }
