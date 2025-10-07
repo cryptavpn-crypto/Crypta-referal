@@ -3,473 +3,605 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CRYPTA - Admin Dashboard</title>
+    <title>CRYPTA - Referral Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
         body {
-            background: linear-gradient(135deg, #1e3a8a, #3730a3, #000);
+            background: linear-gradient(to bottom right, #581c87, #1e3a8a, #000);
             min-height: 100vh;
         }
-        .stat-card {
-            background: rgba(255, 255, 255, 0.1);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
+        .glow {
+            box-shadow: 0 0 20px rgba(168, 85, 247, 0.4);
         }
-        .user-card {
-            background: rgba(255, 255, 255, 0.05);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .task-link {
+            transition: all 0.3s ease;
         }
-        .verification-item {
-            background: rgba(255, 255, 255, 0.03);
-            border: 1px solid rgba(255, 255, 255, 0.1);
+        .task-link:hover {
+            transform: translateY(-2px);
+        }
+        .loading {
+            opacity: 0.7;
+            pointer-events: none;
         }
     </style>
 </head>
-<body class="text-white p-4">
-    <div class="max-w-7xl mx-auto">
+<body class="text-white">
+    <div id="app" class="min-h-screen">
         <!-- Header -->
-        <div class="text-center mb-8">
-            <h1 class="text-4xl font-bold mb-2">🔐 CRYPTA - Admin Dashboard</h1>
-            <p class="text-gray-300">Complete management system with manual task verification</p>
-        </div>
-
-        <!-- Stats Cards -->
-        <div class="grid grid-cols-1 md:grid-cols-5 gap-4 mb-8">
-            <div class="stat-card rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-purple-400" id="totalUsers">0</div>
-                <div class="text-gray-300">Total Users</div>
-            </div>
-            <div class="stat-card rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-blue-400" id="totalPoints">0</div>
-                <div class="text-gray-300">Total Points</div>
-            </div>
-            <div class="stat-card rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-green-400" id="totalReferrals">0</div>
-                <div class="text-gray-300">Total Referrals</div>
-            </div>
-            <div class="stat-card rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-yellow-400" id="totalTasks">0</div>
-                <div class="text-gray-300">Completed Tasks</div>
-            </div>
-            <div class="stat-card rounded-xl p-6 text-center">
-                <div class="text-3xl font-bold text-orange-400" id="pendingVerifications">0</div>
-                <div class="text-gray-300">Pending Tasks</div>
-            </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="flex gap-4 mb-6 flex-wrap">
-            <button onclick="loadData()" class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg transition">
-                🔄 Refresh Data
-            </button>
-            <a href="/api/admin/export-csv" class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg transition no-underline text-white">
-                📥 Export CSV with Emails
-            </a>
-            <button onclick="showPendingVerifications()" class="bg-orange-600 hover:bg-orange-700 px-4 py-2 rounded-lg transition">
-                ⏳ Pending Verifications (<span id="pendingCount">0</span>)
-            </button>
-            <button onclick="showAllUsers()" class="bg-purple-600 hover:bg-purple-700 px-4 py-2 rounded-lg transition">
-                👥 All Users
-            </button>
-            <a href="/" class="bg-gray-600 hover:bg-gray-700 px-4 py-2 rounded-lg transition no-underline text-white">
-                🏠 User Dashboard
-            </a>
-        </div>
-
-        <!-- Pending Verifications Section -->
-        <div id="pendingSection" class="user-card rounded-xl p-6 mb-6 hidden">
-            <h2 class="text-2xl font-bold mb-4">⏳ Pending Task Verifications</h2>
-            <div id="pendingVerificationsList" class="space-y-4">
-                <!-- Pending verifications will be injected here -->
-            </div>
-        </div>
-
-        <!-- Users Table -->
-        <div id="usersSection" class="user-card rounded-xl p-6 mb-6">
-            <h2 class="text-2xl font-bold mb-4">👥 All Users - Leaderboard</h2>
-            <div class="overflow-x-auto">
-                <table class="w-full">
-                    <thead>
-                        <tr class="border-b border-gray-600">
-                            <th class="text-left p-3">Rank</th>
-                            <th class="text-left p-3">Username</th>
-                            <th class="text-left p-3">Email</th>
-                            <th class="text-left p-3">Telegram</th>
-                            <th class="text-left p-3">Total Points</th>
-                            <th class="text-left p-3">Task Points</th>
-                            <th class="text-left p-3">Referral Points</th>
-                            <th class="text-left p-3">Referrals</th>
-                            <th class="text-left p-3">Completed Tasks</th>
-                            <th class="text-left p-3">Pending Tasks</th>
-                            <th class="text-left p-3">Registration Date</th>
-                            <th class="text-left p-3">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersTable">
-                        <!-- Users data will be injected here -->
-                    </tbody>
-                </table>
-            </div>
-        </div>
-
-        <!-- User Details Modal -->
-        <div id="userModal" class="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center hidden z-50">
-            <div class="bg-gray-800 rounded-xl p-6 max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-                <div class="flex justify-between items-center mb-4">
-                    <h3 class="text-xl font-bold" id="modalTitle">User Details</h3>
-                    <button onclick="closeUserModal()" class="text-gray-400 hover:text-white">✕</button>
+        <header class="bg-black bg-opacity-50 backdrop-blur-md border-b border-purple-500/30">
+            <div class="container mx-auto px-4 py-4 flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-gradient-to-br from-purple-500 to-blue-500 rounded-lg flex items-center justify-center font-bold text-xl">
+                        C
+                    </div>
+                    <h1 class="text-2xl font-bold">CRYPTA</h1>
                 </div>
-                <div id="modalContent">
-                    <!-- Modal content will be injected here -->
+                <div class="flex items-center gap-4">
+                    <button 
+                        onclick="showLoginForm()"
+                        id="loginBtn"
+                        class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg font-semibold transition-all"
+                    >
+                        Login
+                    </button>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400">Total Points</div>
+                        <div class="text-2xl font-bold text-purple-400" id="totalPoints">0</div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- Login/Register -->
+        <div id="loginSection" class="container mx-auto px-4 py-20 max-w-md">
+            <div class="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-sm rounded-xl p-8 border border-purple-500/30 glow">
+                <h2 class="text-3xl font-bold mb-6 text-center">Welcome to CRYPTA</h2>
+                <p class="text-gray-300 text-center mb-6 text-sm">
+                    Complete tasks and earn points for rewards!
+                </p>
+                <div class="space-y-4">
+                    <input 
+                        type="text" 
+                        id="usernameInput" 
+                        placeholder="Username (required)"
+                        class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    />
+                    <input 
+                        type="email" 
+                        id="emailInput" 
+                        placeholder="Email (required for rewards)"
+                        class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    />
+                    <input 
+                        type="text" 
+                        id="telegramInput" 
+                        placeholder="Telegram @username (optional)"
+                        class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    />
+                    <input 
+                        type="text" 
+                        id="referralInput" 
+                        placeholder="Referral code (optional)"
+                        class="w-full bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-purple-400"
+                    />
+                    <button 
+                        onclick="register()"
+                        class="w-full bg-purple-600 hover:bg-purple-700 py-3 rounded-lg font-semibold transition-all"
+                    >
+                        Start Earning
+                    </button>
+                </div>
+                <div class="mt-4 text-center">
+                    <button 
+                        onclick="showLoginForm()"
+                        class="text-blue-400 hover:text-blue-300 text-sm"
+                    >
+                        Already have an account? Login here
+                    </button>
+                </div>
+                <div class="mt-4 text-center text-xs text-gray-400">
+                    <p>Your email will only be used to contact you and deliver rewards</p>
                 </div>
             </div>
         </div>
 
-        <!-- Last Update -->
-        <div class="text-center mt-8 text-gray-400">
-            <div>Last update: <span id="lastUpdate">-</span></div>
-            <div class="text-sm">Auto-refresh every 30 seconds</div>
+        <!-- Login for existing users -->
+        <div id="loginExistingSection" class="container mx-auto px-4 py-20 max-w-md hidden">
+            <div class="bg-gradient-to-br from-blue-600/20 to-green-600/20 backdrop-blur-sm rounded-xl p-8 border border-blue-500/30 glow">
+                <h2 class="text-2xl font-bold mb-6 text-center">Login to Your Account</h2>
+                <div class="space-y-4">
+                    <input 
+                        type="text" 
+                        id="loginUsernameInput" 
+                        placeholder="Username"
+                        class="w-full bg-black/50 border border-blue-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                    />
+                    <div class="text-center text-gray-300 text-sm">or</div>
+                    <input 
+                        type="email" 
+                        id="loginEmailInput" 
+                        placeholder="Email"
+                        class="w-full bg-black/50 border border-blue-500/50 rounded-lg px-4 py-3 text-white placeholder-gray-400 focus:outline-none focus:border-blue-400"
+                    />
+                    <button 
+                        onclick="loginExistingUser()"
+                        class="w-full bg-blue-600 hover:bg-blue-700 py-3 rounded-lg font-semibold transition-all"
+                    >
+                        Login to Account
+                    </button>
+                    <button 
+                        onclick="showRegisterForm()"
+                        class="w-full bg-gray-600 hover:bg-gray-700 py-3 rounded-lg font-semibold transition-all"
+                    >
+                        New User? Register
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Main Dashboard (hidden initially) -->
+        <div id="dashboardSection" class="container mx-auto px-4 py-8 max-w-4xl hidden">
+            <!-- User Info -->
+            <div class="bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30 mb-8">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <h2 class="text-xl font-bold">👋 Welcome, <span id="userName" class="text-purple-400"></span>!</h2>
+                        <p class="text-gray-300 text-sm mt-1">
+                            Email: <span id="userEmail" class="text-green-400"></span>
+                            <span id="userTelegram" class="ml-3"></span>
+                        </p>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-sm text-gray-400">Your code</div>
+                        <div class="text-lg font-bold text-yellow-400" id="userReferralCode">-</div>
+                        <button 
+                            onclick="logout()"
+                            class="text-xs text-gray-400 hover:text-gray-300 mt-1"
+                        >
+                            Logout
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stats Cards -->
+            <div class="grid md:grid-cols-4 gap-4 mb-8">
+                <div class="bg-gradient-to-br from-purple-600/20 to-purple-800/20 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30">
+                    <div class="text-gray-300 mb-2">Total Points</div>
+                    <div class="text-3xl font-bold" id="totalPointsCard">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-blue-600/20 to-blue-800/20 backdrop-blur-sm rounded-xl p-6 border border-blue-500/30">
+                    <div class="text-gray-300 mb-2">Task Points</div>
+                    <div class="text-3xl font-bold" id="taskPoints">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-green-600/20 to-green-800/20 backdrop-blur-sm rounded-xl p-6 border border-green-500/30">
+                    <div class="text-gray-300 mb-2">Referrals</div>
+                    <div class="text-3xl font-bold" id="referralCount">0</div>
+                </div>
+                <div class="bg-gradient-to-br from-yellow-600/20 to-yellow-800/20 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
+                    <div class="text-gray-300 mb-2">Referral Points</div>
+                    <div class="text-3xl font-bold" id="referralPoints">0</div>
+                    <div class="text-xs text-gray-400 mt-1">150 pts per referral</div>
+                </div>
+            </div>
+
+            <!-- Referral Link -->
+            <div class="bg-gradient-to-br from-purple-600/10 to-blue-600/10 backdrop-blur-sm rounded-xl p-6 border border-purple-500/30 mb-8">
+                <h2 class="text-xl font-bold mb-4">🔗 Your Referral Link</h2>
+                <p class="text-gray-300 mb-4 text-sm">
+                    Share your link and earn <span class="text-green-400 font-bold">150 points</span> for each person who joins!
+                </p>
+                <div class="flex gap-2">
+                    <input 
+                        type="text" 
+                        id="referralLink"
+                        readonly
+                        class="flex-1 bg-black/50 border border-purple-500/50 rounded-lg px-4 py-3 text-sm"
+                    />
+                    <button 
+                        onclick="copyLink()"
+                        class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-lg font-semibold transition-all"
+                        id="copyBtn"
+                    >
+                        Copy
+                    </button>
+                </div>
+            </div>
+
+            <!-- Tasks Section -->
+            <div class="bg-gradient-to-br from-gray-900/50 to-gray-800/50 backdrop-blur-sm rounded-xl p-6 border border-gray-700/50 mb-8">
+                <h2 class="text-2xl font-bold mb-6">🏆 Complete Tasks & Earn Points</h2>
+                <div id="tasksList" class="space-y-4">
+                    <!-- Tasks will be injected here -->
+                </div>
+
+                <!-- Progress Bar -->
+                <div class="mt-8 pt-6 border-t border-gray-700">
+                    <div class="flex justify-between items-center mb-2">
+                        <span class="text-sm text-gray-400">Progress</span>
+                        <span class="text-sm font-semibold" id="progressText">0 / 3 tasks completed</span>
+                    </div>
+                    <div class="w-full bg-gray-700 rounded-full h-3">
+                        <div 
+                            id="progressBar"
+                            class="bg-gradient-to-r from-purple-500 to-blue-500 h-3 rounded-full transition-all duration-500"
+                            style="width: 0%"
+                        ></div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leaderboard -->
+            <div class="bg-gradient-to-br from-yellow-600/10 to-orange-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
+                <h3 class="text-xl font-bold mb-4">🏅 Leaderboard - Top Performers</h3>
+                <div id="leaderboard" class="space-y-3">
+                    <!-- Leaderboard will be injected here -->
+                </div>
+            </div>
         </div>
     </div>
 
     <script>
         const API_URL = '/api/referral';
-        const ADMIN_URL = '/api/admin';
+        let currentUser = null;
 
-        async function loadData() {
+        const tasks = [
+            { 
+                id: 'twitter_follow', 
+                title: 'Follow CRYPTA VPN on X (Twitter)', 
+                points: 50, 
+                icon: '🐦',
+                link: 'https://x.com/cryptavpn?s=21',
+                description: 'Follow our Twitter profile @cryptavpn',
+                buttonText: 'Follow on X',
+                verificationNote: 'Admin will manually verify your follow'
+            },
+            { 
+                id: 'twitter_post', 
+                title: 'Post and tag us on X', 
+                points: 100, 
+                icon: '📱',
+                link: 'https://x.com/intent/tweet?text=Check%20out%20CRYPTA%20VPN%20-%20Amazing%20privacy%20protection!%20%40cryptavpn%20%F0%9F%94%92%EF%B8%8F',
+                description: 'Create a post tagging @cryptavpn',
+                buttonText: 'Post on X',
+                verificationNote: 'Admin will manually verify your post'
+            },
+            { 
+                id: 'telegram_join', 
+                title: 'Join Telegram Channel', 
+                points: 75, 
+                icon: '✈️',
+                link: 'https://t.me/cryptacommunityvpn',
+                description: 'Join our Telegram community channel',
+                buttonText: 'Join Telegram',
+                verificationNote: 'Admin will manually verify you joined'
+            }
+        ];
+
+        // Navigation functions
+        function showLoginForm() {
+            document.getElementById('loginSection').classList.add('hidden');
+            document.getElementById('loginExistingSection').classList.remove('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            clearLoginForms();
+        }
+
+        function showRegisterForm() {
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('loginExistingSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            clearLoginForms();
+        }
+
+        function clearLoginForms() {
+            document.getElementById('loginUsernameInput').value = '';
+            document.getElementById('loginEmailInput').value = '';
+        }
+
+        function logout() {
+            currentUser = null;
+            document.getElementById('loginSection').classList.remove('hidden');
+            document.getElementById('loginExistingSection').classList.add('hidden');
+            document.getElementById('dashboardSection').classList.add('hidden');
+            clearAllForms();
+        }
+
+        function clearAllForms() {
+            document.getElementById('usernameInput').value = '';
+            document.getElementById('emailInput').value = '';
+            document.getElementById('telegramInput').value = '';
+            document.getElementById('referralInput').value = '';
+            clearLoginForms();
+        }
+
+        // Register new user
+        async function register() {
+            const username = document.getElementById('usernameInput').value.trim();
+            const email = document.getElementById('emailInput').value.trim();
+            const telegram = document.getElementById('telegramInput').value.trim();
+            const referredBy = document.getElementById('referralInput').value.trim();
+
+            if (!username) {
+                alert('Please enter a username!');
+                return;
+            }
+
+            if (!email) {
+                alert('Please enter your email to receive rewards!');
+                return;
+            }
+
+            if (!email.includes('@') || !email.includes('.')) {
+                alert('Please enter a valid email address!');
+                return;
+            }
+
             try {
-                const response = await fetch(`${ADMIN_URL}/data`);
+                const response = await fetch(`${API_URL}/user/register`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email, telegram, referredBy })
+                });
+
                 const data = await response.json();
                 
                 if (data.success) {
-                    // Update stats
-                    document.getElementById('totalUsers').textContent = data.data.total_users;
-                    document.getElementById('totalPoints').textContent = data.data.total_points;
-                    document.getElementById('totalReferrals').textContent = data.data.total_referrals;
-                    document.getElementById('totalTasks').textContent = data.data.total_completed_tasks;
-                    document.getElementById('pendingVerifications').textContent = data.data.pending_verifications;
-                    document.getElementById('pendingCount').textContent = data.data.pending_verifications;
-                    
-                    // Update users table
-                    updateUsersTable(data.data.users);
-                    
-                    // Update timestamp
-                    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString();
+                    currentUser = data.user;
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('loginExistingSection').classList.add('hidden');
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+                    loadDashboard();
+                } else {
+                    if (data.suggestion) {
+                        alert('Error: ' + data.error + '\n' + data.suggestion);
+                    } else {
+                        alert('Error: ' + data.error);
+                    }
                 }
             } catch (error) {
-                console.error('Error loading data:', error);
-                alert('Error loading data');
+                console.error('Error:', error);
+                alert('Server connection error!');
             }
         }
 
-        function updateUsersTable(users) {
-            const usersTable = document.getElementById('usersTable');
-            usersTable.innerHTML = '';
+        // Login existing user
+        async function loginExistingUser() {
+            const username = document.getElementById('loginUsernameInput').value.trim();
+            const email = document.getElementById('loginEmailInput').value.trim();
 
-            users.forEach((user, index) => {
-                const userRow = `
-                    <tr class="border-b border-gray-700 hover:bg-gray-800">
-                        <td class="p-3">
-                            <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold ${
-                                index === 0 ? 'bg-yellow-500 text-black' : 
-                                index === 1 ? 'bg-gray-400 text-black' : 
-                                index === 2 ? 'bg-orange-600 text-white' : 'bg-gray-700'
-                            }">
-                                ${index + 1}
-                            </div>
-                        </td>
-                        <td class="p-3 font-semibold">${user.username}</td>
-                        <td class="p-3">
-                            <div class="text-blue-300">${user.email}</div>
-                            <div class="text-xs text-gray-400">Copy: <button onclick="copyToClipboard('${user.email}')" class="text-green-400 hover:text-green-300">📋</button></div>
-                        </td>
-                        <td class="p-3">${user.telegram || '-'}</td>
-                        <td class="p-3 font-bold text-yellow-400">${user.totalPoints}</td>
-                        <td class="p-3 text-blue-400">${user.taskPoints}</td>
-                        <td class="p-3 text-green-400">${user.referralPoints}</td>
-                        <td class="p-3">
-                            <span class="bg-green-600 px-2 py-1 rounded text-sm">${user.referralCount}</span>
-                        </td>
-                        <td class="p-3">
-                            <span class="bg-blue-600 px-2 py-1 rounded text-sm">${user.completedTasks.length}</span>
-                        </td>
-                        <td class="p-3">
-                            ${user.pendingTasks && user.pendingTasks.length > 0 ? 
-                                `<span class="bg-orange-600 px-2 py-1 rounded text-sm">${user.pendingTasks.length}</span>` : 
-                                '<span class="text-gray-400">-</span>'
-                            }
-                        </td>
-                        <td class="p-3 text-sm text-gray-300">
-                            ${new Date(user.createdAt).toLocaleDateString('en-US')}
-                        </td>
-                        <td class="p-3">
-                            <div class="flex gap-2">
-                                <button onclick="viewUserDetails('${user.username}')" class="bg-blue-600 hover:bg-blue-700 px-3 py-1 rounded text-sm">
-                                    View
-                                </button>
-                                ${user.pendingTasks && user.pendingTasks.length > 0 ? 
-                                    `<button onclick="showPendingVerifications()" class="bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded text-sm">
-                                        Review
-                                    </button>` : 
-                                    ''
-                                }
-                            </div>
-                        </td>
-                    </tr>
-                `;
-                usersTable.innerHTML += userRow;
-            });
-        }
+            if (!username && !email) {
+                alert('Please enter username or email!');
+                return;
+            }
 
-        async function showPendingVerifications() {
             try {
-                const response = await fetch(`${ADMIN_URL}/pending-verifications`);
+                const response = await fetch(`${API_URL}/user/login`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ username, email })
+                });
+
                 const data = await response.json();
                 
                 if (data.success) {
-                    const pendingList = document.getElementById('pendingVerificationsList');
-                    pendingList.innerHTML = '';
+                    currentUser = data.user;
+                    document.getElementById('loginSection').classList.add('hidden');
+                    document.getElementById('loginExistingSection').classList.add('hidden');
+                    document.getElementById('dashboardSection').classList.remove('hidden');
+                    loadDashboard();
+                } else {
+                    alert('Error: ' + data.error);
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Server connection error!');
+            }
+        }
 
-                    if (data.pendingVerifications.length === 0) {
-                        pendingList.innerHTML = '<div class="text-center text-gray-400 py-8">No pending verifications</div>';
-                    } else {
-                        data.pendingVerifications.forEach(verification => {
-                            const verificationHTML = `
-                                <div class="verification-item rounded-lg p-4">
-                                    <div class="flex justify-between items-start mb-3">
-                                        <div>
-                                            <h4 class="font-bold text-lg">${verification.taskTitle}</h4>
-                                            <div class="text-sm text-gray-300">
-                                                User: <span class="text-blue-300">${verification.username}</span> | 
-                                                Email: <span class="text-green-300">${verification.email}</span>
-                                            </div>
-                                            <div class="text-sm text-gray-400">
-                                                Submitted: ${new Date(verification.submittedAt).toLocaleString()}
-                                            </div>
-                                        </div>
-                                        <div class="text-right">
-                                            <div class="text-xl font-bold text-yellow-400">+${verification.points} pts</div>
-                                            <div class="text-sm text-gray-400">Task: ${verification.taskId}</div>
-                                        </div>
-                                    </div>
-                                    <div class="flex gap-2">
-                                        <button onclick="approveTask('${verification.username}', '${verification.taskId}')" 
-                                                class="bg-green-600 hover:bg-green-700 px-4 py-2 rounded-lg flex-1">
-                                            ✅ Approve & Award Points
-                                        </button>
-                                        <button onclick="rejectTask('${verification.username}', '${verification.taskId}')" 
-                                                class="bg-red-600 hover:bg-red-700 px-4 py-2 rounded-lg flex-1">
-                                            ❌ Reject Task
-                                        </button>
-                                        <button onclick="viewUserDetails('${verification.username}')" 
-                                                class="bg-blue-600 hover:bg-blue-700 px-4 py-2 rounded-lg">
-                                            👤 View User
-                                        </button>
-                                    </div>
+        // Load dashboard
+        function loadDashboard() {
+            // Update user info
+            document.getElementById('userName').textContent = currentUser.username;
+            document.getElementById('userEmail').textContent = currentUser.email;
+            document.getElementById('userReferralCode').textContent = currentUser.referralCode;
+            
+            if (currentUser.telegram) {
+                document.getElementById('userTelegram').innerHTML = `Telegram: <span class="text-blue-400">${currentUser.telegram}</span>`;
+            } else {
+                document.getElementById('userTelegram').innerHTML = '';
+            }
+
+            // Calculate points
+            const taskPoints = calculateTaskPoints();
+            const referralPoints = (currentUser.referralCount || 0) * 150;
+            const totalPoints = taskPoints + referralPoints;
+
+            // Update stats
+            document.getElementById('totalPoints').textContent = totalPoints;
+            document.getElementById('totalPointsCard').textContent = totalPoints;
+            document.getElementById('taskPoints').textContent = taskPoints;
+            document.getElementById('referralCount').textContent = currentUser.referralCount || 0;
+            document.getElementById('referralPoints').textContent = referralPoints;
+            document.getElementById('referralLink').value = `${window.location.origin}?ref=${currentUser.referralCode}`;
+
+            // Load tasks
+            renderTasks();
+            
+            // Load leaderboard
+            loadLeaderboard();
+        }
+
+        function calculateTaskPoints() {
+            return (currentUser.completedTasks || []).reduce((sum, task) => sum + task.points, 0);
+        }
+
+        function renderTasks() {
+            const tasksList = document.getElementById('tasksList');
+            tasksList.innerHTML = '';
+
+            tasks.forEach(task => {
+                const isCompleted = (currentUser.completedTasks || []).some(t => t.taskId === task.id);
+                const isPending = (currentUser.pendingTasks || []).some(t => t.taskId === task.id);
+                
+                const taskHTML = `
+                    <div class="bg-gradient-to-r ${isCompleted ? 'from-green-900/30 to-green-800/30 border-green-500/50' : isPending ? 'from-yellow-900/30 to-yellow-800/30 border-yellow-500/50' : 'from-gray-800/50 to-gray-900/50 border-gray-600/50'} border rounded-xl p-5">
+                        <div class="flex items-center justify-between">
+                            <div class="flex items-center gap-4 flex-1">
+                                <div class="w-12 h-12 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500/20' : isPending ? 'bg-yellow-500/20' : 'bg-purple-500/20'} text-2xl">
+                                    ${task.icon}
                                 </div>
-                            `;
-                            pendingList.innerHTML += verificationHTML;
-                        });
+                                <div class="flex-1">
+                                    <h3 class="font-semibold text-lg">${task.title}</h3>
+                                    <p class="text-gray-300 text-sm mt-1">${task.description}</p>
+                                    <div class="flex items-center gap-3 mt-2">
+                                        <span class="text-yellow-400 font-bold">+${task.points} points</span>
+                                        ${isCompleted ? '<span class="text-green-400 text-sm">✓ Completed</span>' : ''}
+                                        ${isPending ? '<span class="text-yellow-400 text-sm">⏳ Pending Verification</span>' : ''}
+                                    </div>
+                                    ${!isCompleted && !isPending ? `<p class="text-xs text-orange-400 mt-1">${task.verificationNote}</p>` : ''}
+                                </div>
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <a 
+                                    href="${task.link}" 
+                                    target="_blank" 
+                                    rel="noopener noreferrer"
+                                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded-lg font-semibold transition-all task-link text-center text-sm"
+                                >
+                                    ${task.buttonText}
+                                </a>
+                                <button
+                                    onclick="submitTask('${task.id}', ${task.points}, this)"
+                                    ${isCompleted || isPending ? 'disabled' : ''}
+                                    class="complete-task-btn px-4 py-2 rounded-lg font-semibold transition-all text-sm ${isCompleted ? 'bg-green-600/50 cursor-not-allowed' : isPending ? 'bg-yellow-600/50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}"
+                                    data-taskid="${task.id}"
+                                >
+                                    ${isCompleted ? 'Completed' : isPending ? 'Pending' : 'Submit for Verification'}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+                tasksList.innerHTML += taskHTML;
+            });
+
+            updateProgress();
+        }
+
+        function updateProgress() {
+            const completed = (currentUser.completedTasks || []).length;
+            const total = tasks.length;
+            const percentage = (completed / total) * 100;
+
+            document.getElementById('progressText').textContent = `${completed} / ${total} tasks completed`;
+            document.getElementById('progressBar').style.width = `${percentage}%`;
+        }
+
+        // Submit task for manual verification
+        async function submitTask(taskId, points, button) {
+            try {
+                // Show loading
+                button.disabled = true;
+                button.innerHTML = '⏳ Submitting...';
+                button.classList.add('loading');
+
+                const response = await fetch(`${API_URL}/task/submit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        username: currentUser.username,
+                        taskId
+                    })
+                });
+
+                const data = await response.json();
+                
+                if (data.success) {
+                    currentUser = data.user;
+                    loadDashboard();
+                    alert('✅ Task submitted for manual verification! The admin will review your completion and award points soon.');
+                } else {
+                    alert('Error: ' + data.error);
+                    button.disabled = false;
+                    button.innerHTML = 'Submit for Verification';
+                    button.classList.remove('loading');
+                }
+            } catch (error) {
+                console.error('Error:', error);
+                alert('Error submitting task! Please try again.');
+                button.disabled = false;
+                button.innerHTML = 'Submit for Verification';
+                button.classList.remove('loading');
+            }
+        }
+
+        async function loadLeaderboard() {
+            try {
+                const response = await fetch(`${API_URL}/leaderboard?limit=20`);
+                const data = await response.json();
+                
+                if (data.success) {
+                    const leaderboard = document.getElementById('leaderboard');
+                    leaderboard.innerHTML = '';
+
+                    if (data.leaderboard.length === 0) {
+                        leaderboard.innerHTML = '<div class="text-center text-gray-400 py-4">No users yet. Be the first!</div>';
+                        return;
                     }
 
-                    // Show pending section, hide users section
-                    document.getElementById('pendingSection').classList.remove('hidden');
-                    document.getElementById('usersSection').classList.add('hidden');
-                }
-            } catch (error) {
-                console.error('Error loading pending verifications:', error);
-                alert('Error loading pending verifications');
-            }
-        }
+                    data.leaderboard.forEach(entry => {
+                        const medals = ['🥇', '🥈', '🥉'];
+                        const medal = entry.rank <= 3 ? medals[entry.rank - 1] : `#${entry.rank}`;
+                        const isCurrentUser = entry.username === currentUser.username;
 
-        function showAllUsers() {
-            document.getElementById('pendingSection').classList.add('hidden');
-            document.getElementById('usersSection').classList.remove('hidden');
-        }
-
-        async function approveTask(username, taskId) {
-            if (!confirm(`Approve task for ${username} and award points?`)) return;
-
-            try {
-                const response = await fetch(`${ADMIN_URL}/approve-task`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, taskId })
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(`✅ Task approved! ${username} received points.`);
-                    loadData();
-                    showPendingVerifications();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error approving task:', error);
-                alert('Error approving task');
-            }
-        }
-
-        async function rejectTask(username, taskId) {
-            const reason = prompt('Enter reason for rejection:');
-            if (!reason) return;
-
-            try {
-                const response = await fetch(`${ADMIN_URL}/reject-task`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, taskId, reason })
-                });
-
-                const data = await response.json();
-                
-                if (data.success) {
-                    alert(`❌ Task rejected. User notified.`);
-                    loadData();
-                    showPendingVerifications();
-                } else {
-                    alert('Error: ' + data.error);
-                }
-            } catch (error) {
-                console.error('Error rejecting task:', error);
-                alert('Error rejecting task');
-            }
-        }
-
-        async function viewUserDetails(username) {
-            try {
-                const response = await fetch(`${ADMIN_URL}/data`);
-                const data = await response.json();
-                
-                if (data.success) {
-                    const user = data.data.users.find(u => u.username === username);
-                    if (user) {
-                        document.getElementById('modalTitle').textContent = `User: ${user.username}`;
-                        
-                        const modalContent = `
-                            <div class="space-y-4">
-                                <div class="grid grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="text-gray-400 text-sm">Email</label>
-                                        <div class="text-blue-300">${user.email}</div>
+                        const entryHTML = `
+                            <div class="flex items-center justify-between bg-black/30 rounded-lg p-4 ${isCurrentUser ? 'border-2 border-purple-500' : ''}">
+                                <div class="flex items-center gap-4 flex-1">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-gradient-to-br from-yellow-500 to-orange-500">
+                                        ${medal}
                                     </div>
-                                    <div>
-                                        <label class="text-gray-400 text-sm">Telegram</label>
-                                        <div>${user.telegram || 'Not provided'}</div>
-                                    </div>
-                                    <div>
-                                        <label class="text-gray-400 text-sm">Referral Code</label>
-                                        <div class="font-mono">${user.referralCode}</div>
-                                    </div>
-                                    <div>
-                                        <label class="text-gray-400 text-sm">Total Points</label>
-                                        <div class="text-yellow-400 font-bold text-xl">${user.totalPoints}</div>
-                                    </div>
-                                </div>
-
-                                <div class="border-t border-gray-600 pt-4">
-                                    <h4 class="font-bold mb-2">📊 Points Breakdown</h4>
-                                    <div class="grid grid-cols-3 gap-2 text-sm">
-                                        <div class="text-center p-2 bg-blue-600 rounded">
-                                            <div>Task Points</div>
-                                            <div class="font-bold">${user.taskPoints}</div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="${isCurrentUser ? 'font-bold text-purple-400' : 'font-semibold'}">${entry.username}</span>
+                                            ${isCurrentUser ? '<span class="text-xs bg-purple-600 px-2 py-1 rounded">YOU</span>' : ''}
                                         </div>
-                                        <div class="text-center p-2 bg-green-600 rounded">
-                                            <div>Referral Points</div>
-                                            <div class="font-bold">${user.referralPoints}</div>
-                                        </div>
-                                        <div class="text-center p-2 bg-yellow-600 rounded">
-                                            <div>Referrals</div>
-                                            <div class="font-bold">${user.referralCount}</div>
+                                        <div class="text-xs text-gray-400 mt-1">${entry.email}</div>
+                                        <div class="flex gap-3 mt-1 text-xs">
+                                            <span class="text-blue-400">${entry.completedTasks} tasks</span>
+                                            <span class="text-green-400">${entry.referrals} referrals</span>
                                         </div>
                                     </div>
                                 </div>
-
-                                <div class="border-t border-gray-600 pt-4">
-                                    <h4 class="font-bold mb-2">✅ Completed Tasks (${user.completedTasks.length})</h4>
-                                    ${user.completedTasks.length > 0 ? 
-                                        user.completedTasks.map(task => `
-                                            <div class="flex justify-between items-center p-2 bg-green-900 rounded mb-1">
-                                                <span>${getTaskTitle(task.taskId)}</span>
-                                                <span class="text-yellow-400">+${task.points} pts</span>
-                                            </div>
-                                        `).join('') : 
-                                        '<div class="text-gray-400 text-center py-2">No completed tasks</div>'
-                                    }
-                                </div>
-
-                                ${user.pendingTasks && user.pendingTasks.length > 0 ? `
-                                <div class="border-t border-gray-600 pt-4">
-                                    <h4 class="font-bold mb-2">⏳ Pending Tasks (${user.pendingTasks.length})</h4>
-                                    ${user.pendingTasks.map(task => `
-                                        <div class="flex justify-between items-center p-2 bg-orange-900 rounded mb-1">
-                                            <span>${getTaskTitle(task.taskId)}</span>
-                                            <span class="text-yellow-400">+${task.points} pts</span>
-                                            <div class="flex gap-1">
-                                                <button onclick="approveTask('${user.username}', '${task.taskId}')" 
-                                                        class="bg-green-600 hover:bg-green-700 px-2 py-1 rounded text-xs">
-                                                    Approve
-                                                </button>
-                                                <button onclick="rejectTask('${user.username}', '${task.taskId}')" 
-                                                        class="bg-red-600 hover:bg-red-700 px-2 py-1 rounded text-xs">
-                                                    Reject
-                                                </button>
-                                            </div>
-                                        </div>
-                                    `).join('')}
-                                </div>
-                                ` : ''}
-
-                                <div class="border-t border-gray-600 pt-4">
-                                    <h4 class="font-bold mb-2">📅 Account Info</h4>
-                                    <div class="text-sm text-gray-300">
-                                        <div>Registered: ${new Date(user.createdAt).toLocaleString()}</div>
-                                        <div>Last Active: ${new Date(user.lastActive).toLocaleString()}</div>
-                                        ${user.referredBy ? `<div>Referred by: ${user.referredBy}</div>` : ''}
-                                    </div>
+                                <div class="text-right">
+                                    <div class="font-bold text-xl text-yellow-400">${entry.points}</div>
+                                    <div class="text-xs text-gray-400">total points</div>
                                 </div>
                             </div>
                         `;
-
-                        document.getElementById('modalContent').innerHTML = modalContent;
-                        document.getElementById('userModal').classList.remove('hidden');
-                    }
+                        leaderboard.innerHTML += entryHTML;
+                    });
                 }
             } catch (error) {
-                console.error('Error loading user details:', error);
-                alert('Error loading user details');
+                console.error('Error loading leaderboard:', error);
             }
         }
 
-        function closeUserModal() {
-            document.getElementById('userModal').classList.add('hidden');
+        function copyLink() {
+            const link = document.getElementById('referralLink');
+            link.select();
+            document.execCommand('copy');
+            
+            const btn = document.getElementById('copyBtn');
+            btn.textContent = '✓ Copied!';
+            setTimeout(() => btn.textContent = 'Copy', 2000);
         }
 
-        function copyToClipboard(text) {
-            navigator.clipboard.writeText(text).then(() => {
-                alert('Email copied to clipboard: ' + text);
-            });
-        }
-
-        function getTaskTitle(taskId) {
-            const tasks = {
-                'twitter_follow': 'Follow on X (Twitter)',
-                'twitter_post': 'Post on X',
-                'telegram_join': 'Join Telegram'
-            };
-            return tasks[taskId] || taskId;
-        }
-
-        // Load data on page load and every 30 seconds
-        loadData();
-        setInterval(loadData, 30000);
-
-        // Close modal when clicking outside
-        document.getElementById('userModal').addEventListener('click', function(e) {
-            if (e.target === this) {
-                closeUserModal();
+        // Auto-fill referral code from URL
+        window.addEventListener('DOMContentLoaded', () => {
+            const urlParams = new URLSearchParams(window.location.search);
+            const refCode = urlParams.get('ref');
+            if (refCode) {
+                document.getElementById('referralInput').value = refCode;
             }
         });
     </script>
