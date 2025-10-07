@@ -29,6 +29,8 @@ function loadData() {
     users: [
       {
         username: "admin",
+        email: "admin@crypta.com",
+        telegram: "@admin",
         referralCode: "ADMIN1",
         points: 500,
         referralCount: 3,
@@ -41,20 +43,6 @@ function loadData() {
           { username: "user1", joinedAt: new Date() },
           { username: "user2", joinedAt: new Date() },
           { username: "user3", joinedAt: new Date() }
-        ],
-        createdAt: new Date()
-      },
-      {
-        username: "testuser",
-        referralCode: "TEST12",
-        points: 225,
-        referralCount: 1,
-        completedTasks: [
-          { taskId: 'twitter_follow', points: 50, completedAt: new Date() },
-          { taskId: 'telegram_join', points: 75, completedAt: new Date() }
-        ],
-        referrals: [
-          { username: "friend1", joinedAt: new Date() }
         ],
         createdAt: new Date()
       }
@@ -97,30 +85,57 @@ function findUserByReferralCode(code) {
   return memoryDB.users.find(user => user.referralCode === code);
 }
 
+function findUserByEmail(email) {
+  return memoryDB.users.find(user => user.email === email);
+}
+
+// Validazione email semplice
+function isValidEmail(email) {
+  return email && email.includes('@') && email.includes('.');
+}
+
 // API Routes
 app.post("/api/referral/user/register", async (req, res) => {
   try {
-    const { username, referredBy } = req.body;
+    const { username, email, telegram, referredBy } = req.body;
     
     if (!username) {
       return res.json({ success: false, error: "Username richiesto" });
     }
 
+    if (!email) {
+      return res.json({ success: false, error: "Email richiesta per ricevere i premi" });
+    }
+
+    if (!isValidEmail(email)) {
+      return res.json({ success: false, error: "Inserisci un'email valida" });
+    }
+
+    // Verifica se l'utente esiste già
     const existingUser = findUserByUsername(username);
     if (existingUser) {
-      return res.json({ success: true, user: existingUser });
+      return res.json({ success: false, error: "Username già utilizzato" });
+    }
+
+    // Verifica se l'email è già utilizzata
+    const existingEmail = findUserByEmail(email);
+    if (existingEmail) {
+      return res.json({ success: false, error: "Email già registrata" });
     }
 
     const referralCode = generateReferralCode();
     const newUser = {
       username,
+      email,
+      telegram: telegram || '',
       referralCode,
       points: 0,
       referralCount: 0,
       completedTasks: [],
       referrals: [],
       referredBy: referredBy || null,
-      createdAt: new Date()
+      createdAt: new Date(),
+      lastActive: new Date()
     };
 
     memoryDB.users.push(newUser);
@@ -131,12 +146,12 @@ app.post("/api/referral/user/register", async (req, res) => {
       if (referrer) {
         referrer.referralCount += 1;
         referrer.points += 150;
-        referrer.referrals.push({ username, joinedAt: new Date() });
+        referrer.referrals.push({ username, email, joinedAt: new Date() });
         saveData(); // SALVA I DATI
       }
     }
 
-    console.log(`✅ Nuovo utente: ${username}`);
+    console.log(`✅ Nuovo utente: ${username} (${email})`);
     res.json({ success: true, user: newUser });
     
   } catch (error) {
@@ -165,6 +180,7 @@ app.post("/api/referral/task/complete", async (req, res) => {
       completedAt: new Date()
     });
     user.points += points;
+    user.lastActive = new Date();
     
     saveData(); // SALVA I DATI
 
@@ -209,6 +225,8 @@ app.get("/api/admin/data", (req, res) => {
       total_completed_tasks: memoryDB.users.reduce((sum, user) => sum + user.completedTasks.length, 0),
       users: memoryDB.users.map(user => ({
         username: user.username,
+        email: user.email,
+        telegram: user.telegram,
         referralCode: user.referralCode,
         points: user.points,
         referralCount: user.referralCount,
@@ -219,7 +237,8 @@ app.get("/api/admin/data", (req, res) => {
         })),
         referrals: user.referrals || [],
         referredBy: user.referredBy,
-        createdAt: user.createdAt
+        createdAt: user.createdAt,
+        lastActive: user.lastActive
       })).sort((a, b) => b.points - a.points)
     };
     
@@ -232,9 +251,44 @@ app.get("/api/admin/data", (req, res) => {
 // 🔍 ENDPOINT ADMIN: Download dati completi
 app.get("/api/admin/export", (req, res) => {
   try {
-    res.setHeader('Content-Disposition', 'attachment; filename="crypta-data.json"');
+    res.setHeader('Content-Disposition', 'attachment; filename="crypta-users.json"');
     res.setHeader('Content-Type', 'application/json');
     res.send(JSON.stringify(memoryDB, null, 2));
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// 🔍 ENDPOINT ADMIN: Download CSV per contatti
+app.get("/api/admin/export-csv", (req, res) => {
+  try {
+    const csvHeaders = "Username,Email,Telegram,Punti,Referral,Tasks Completati,Data Registrazione,Ultima Attività\n";
+    const csvData = memoryDB.users.map(user => 
+      `"${user.username}","${user.email}","${user.telegram}",${user.points},${user.referralCount},${user.completedTasks.length},"${new Date(user.createdAt).toLocaleDateString('it-IT')}","${new Date(user.lastActive).toLocaleDateString('it-IT')}"`
+    ).join('\n');
+    
+    const csv = csvHeaders + csvData;
+    
+    res.setHeader('Content-Disposition', 'attachment; filename="crypta-contatti.csv"');
+    res.setHeader('Content-Type', 'text/csv');
+    res.send(csv);
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// 🔍 ENDPOINT ADMIN: Cerca utente
+app.get("/api/admin/search/:query", (req, res) => {
+  try {
+    const query = req.params.query.toLowerCase();
+    const results = memoryDB.users.filter(user => 
+      user.username.toLowerCase().includes(query) ||
+      user.email.toLowerCase().includes(query) ||
+      user.telegram.toLowerCase().includes(query) ||
+      user.referralCode.toLowerCase().includes(query)
+    );
+    
+    res.json({ success: true, results });
   } catch (error) {
     res.json({ success: false, error: error.message });
   }
@@ -283,7 +337,7 @@ app.listen(PORT, '0.0.0.0', () => {
   console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
   console.log(`🌐 Dashboard: https://crypta-referal.onrender.com`);
   console.log(`👑 Admin Panel: https://crypta-referal.onrender.com/admin`);
-  console.log(`📊 API Data: https://crypta-referal.onrender.com/api/admin/data`);
+  console.log(`📧 Contatti salvati: Email e Telegram`);
   console.log(`💾 Database: JSON File (${memoryDB.users.length} utenti)`);
   console.log('✅ APPLICAZIONE COMPLETAMENTE FUNZIONANTE!');
 });
