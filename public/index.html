@@ -57,7 +57,7 @@
             <div class="bg-gradient-to-br from-purple-600/20 to-blue-600/20 backdrop-blur-sm rounded-xl p-8 border border-purple-500/30 glow">
                 <h2 class="text-3xl font-bold mb-6 text-center">Welcome to CRYPTA</h2>
                 <p class="text-gray-300 text-center mb-6 text-sm">
-                    Enter your details to receive rewards!
+                    Complete tasks and earn points for rewards!
                 </p>
                 <div class="space-y-4">
                     <input 
@@ -233,7 +233,7 @@
 
             <!-- Leaderboard -->
             <div class="bg-gradient-to-br from-yellow-600/10 to-orange-600/10 backdrop-blur-sm rounded-xl p-6 border border-yellow-500/30">
-                <h3 class="text-xl font-bold mb-4">🏅 Top Referrers</h3>
+                <h3 class="text-xl font-bold mb-4">🏅 Leaderboard - Top Performers</h3>
                 <div id="leaderboard" class="space-y-3">
                     <!-- Leaderboard will be injected here -->
                 </div>
@@ -252,19 +252,19 @@
                 points: 50, 
                 icon: '🐦',
                 link: 'https://x.com/cryptavpn?s=21',
-                description: 'Click here to follow our Twitter profile',
+                description: 'Follow our Twitter profile @cryptavpn',
                 buttonText: 'Follow on X',
-                verificationNote: 'Complete the follow action first, then click Verify Task'
+                verificationNote: 'Admin will manually verify your follow'
             },
             { 
                 id: 'twitter_post', 
                 title: 'Post and tag us on X', 
                 points: 100, 
                 icon: '📱',
-                link: 'https://x.com/intent/tweet?text=Discover%20CRYPTA%20VPN%20-%20Privacy%20is%20a%20fundamental%20right!%20%40cryptavpn%20%F0%9F%94%92%EF%B8%8F',
+                link: 'https://x.com/intent/tweet?text=Check%20out%20CRYPTA%20VPN%20-%20Amazing%20privacy%20protection!%20%40cryptavpn%20%F0%9F%94%92%EF%B8%8F',
                 description: 'Create a post tagging @cryptavpn',
                 buttonText: 'Post on X',
-                verificationNote: 'Make the post first, then click Verify Task'
+                verificationNote: 'Admin will manually verify your post'
             },
             { 
                 id: 'telegram_join', 
@@ -272,9 +272,9 @@
                 points: 75, 
                 icon: '✈️',
                 link: 'https://t.me/cryptacommunityvpn',
-                description: 'Join our Telegram community',
+                description: 'Join our Telegram community channel',
                 buttonText: 'Join Telegram',
-                verificationNote: 'Join the channel first, then click Verify Task'
+                verificationNote: 'Admin will manually verify you joined'
             }
         ];
 
@@ -441,12 +441,13 @@
 
             tasks.forEach(task => {
                 const isCompleted = (currentUser.completedTasks || []).some(t => t.taskId === task.id);
+                const isPending = (currentUser.pendingTasks || []).some(t => t.taskId === task.id);
                 
                 const taskHTML = `
-                    <div class="bg-gradient-to-r ${isCompleted ? 'from-green-900/30 to-green-800/30 border-green-500/50' : 'from-gray-800/50 to-gray-900/50 border-gray-600/50'} border rounded-xl p-5">
+                    <div class="bg-gradient-to-r ${isCompleted ? 'from-green-900/30 to-green-800/30 border-green-500/50' : isPending ? 'from-yellow-900/30 to-yellow-800/30 border-yellow-500/50' : 'from-gray-800/50 to-gray-900/50 border-gray-600/50'} border rounded-xl p-5">
                         <div class="flex items-center justify-between">
                             <div class="flex items-center gap-4 flex-1">
-                                <div class="w-12 h-12 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500/20' : 'bg-purple-500/20'} text-2xl">
+                                <div class="w-12 h-12 rounded-full flex items-center justify-center ${isCompleted ? 'bg-green-500/20' : isPending ? 'bg-yellow-500/20' : 'bg-purple-500/20'} text-2xl">
                                     ${task.icon}
                                 </div>
                                 <div class="flex-1">
@@ -455,8 +456,9 @@
                                     <div class="flex items-center gap-3 mt-2">
                                         <span class="text-yellow-400 font-bold">+${task.points} points</span>
                                         ${isCompleted ? '<span class="text-green-400 text-sm">✓ Completed</span>' : ''}
+                                        ${isPending ? '<span class="text-yellow-400 text-sm">⏳ Pending Verification</span>' : ''}
                                     </div>
-                                    ${!isCompleted ? `<p class="text-xs text-orange-400 mt-1">${task.verificationNote}</p>` : ''}
+                                    ${!isCompleted && !isPending ? `<p class="text-xs text-orange-400 mt-1">${task.verificationNote}</p>` : ''}
                                 </div>
                             </div>
                             <div class="flex flex-col gap-2">
@@ -469,12 +471,12 @@
                                     ${task.buttonText}
                                 </a>
                                 <button
-                                    onclick="completeTask('${task.id}', ${task.points}, this)"
-                                    ${isCompleted ? 'disabled' : ''}
-                                    class="complete-task-btn px-4 py-2 rounded-lg font-semibold transition-all text-sm ${isCompleted ? 'bg-green-600/50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}"
+                                    onclick="submitTask('${task.id}', ${task.points}, this)"
+                                    ${isCompleted || isPending ? 'disabled' : ''}
+                                    class="complete-task-btn px-4 py-2 rounded-lg font-semibold transition-all text-sm ${isCompleted ? 'bg-green-600/50 cursor-not-allowed' : isPending ? 'bg-yellow-600/50 cursor-not-allowed' : 'bg-purple-600 hover:bg-purple-700'}"
                                     data-taskid="${task.id}"
                                 >
-                                    ${isCompleted ? 'Completed' : 'Verify Task'}
+                                    ${isCompleted ? 'Completed' : isPending ? 'Pending' : 'Submit for Verification'}
                                 </button>
                             </div>
                         </div>
@@ -495,15 +497,15 @@
             document.getElementById('progressBar').style.width = `${percentage}%`;
         }
 
-        // Verify task completion
-        async function completeTask(taskId, points, button) {
+        // Submit task for manual verification
+        async function submitTask(taskId, points, button) {
             try {
                 // Show loading
                 button.disabled = true;
-                button.innerHTML = '⏳ Verifying...';
+                button.innerHTML = '⏳ Submitting...';
                 button.classList.add('loading');
 
-                const response = await fetch(`${API_URL}/task/verify`, {
+                const response = await fetch(`${API_URL}/task/submit`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -517,50 +519,62 @@
                 if (data.success) {
                     currentUser = data.user;
                     loadDashboard();
-                    alert(`✅ Task verified! +${data.points} points awarded!`);
+                    alert('✅ Task submitted for manual verification! The admin will review your completion and award points soon.');
                 } else {
-                    alert(`❌ ${data.error}\n\nPlease make sure you completed the action and try again.`);
+                    alert('Error: ' + data.error);
                     button.disabled = false;
-                    button.innerHTML = 'Verify Task';
+                    button.innerHTML = 'Submit for Verification';
                     button.classList.remove('loading');
                 }
             } catch (error) {
                 console.error('Error:', error);
-                alert('Error verifying task! Please try again.');
+                alert('Error submitting task! Please try again.');
                 button.disabled = false;
-                button.innerHTML = 'Verify Task';
+                button.innerHTML = 'Submit for Verification';
                 button.classList.remove('loading');
             }
         }
 
         async function loadLeaderboard() {
             try {
-                const response = await fetch(`${API_URL}/leaderboard?limit=10`);
+                const response = await fetch(`${API_URL}/leaderboard?limit=20`);
                 const data = await response.json();
                 
                 if (data.success) {
                     const leaderboard = document.getElementById('leaderboard');
                     leaderboard.innerHTML = '';
 
+                    if (data.leaderboard.length === 0) {
+                        leaderboard.innerHTML = '<div class="text-center text-gray-400 py-4">No users yet. Be the first!</div>';
+                        return;
+                    }
+
                     data.leaderboard.forEach(entry => {
                         const medals = ['🥇', '🥈', '🥉'];
-                        const medal = entry.rank <= 3 ? medals[entry.rank - 1] : entry.rank;
+                        const medal = entry.rank <= 3 ? medals[entry.rank - 1] : `#${entry.rank}`;
                         const isCurrentUser = entry.username === currentUser.username;
 
                         const entryHTML = `
-                            <div class="flex items-center justify-between bg-black/30 rounded-lg p-3 ${isCurrentUser ? 'border-2 border-purple-500' : ''}">
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-full flex items-center justify-center font-bold text-lg">
+                            <div class="flex items-center justify-between bg-black/30 rounded-lg p-4 ${isCurrentUser ? 'border-2 border-purple-500' : ''}">
+                                <div class="flex items-center gap-4 flex-1">
+                                    <div class="w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg bg-gradient-to-br from-yellow-500 to-orange-500">
                                         ${medal}
                                     </div>
-                                    <div>
-                                        <div class="${isCurrentUser ? 'font-bold text-purple-400' : ''}">${entry.username}</div>
-                                        <div class="text-xs text-gray-400">${entry.email}</div>
+                                    <div class="flex-1">
+                                        <div class="flex items-center gap-2">
+                                            <span class="${isCurrentUser ? 'font-bold text-purple-400' : 'font-semibold'}">${entry.username}</span>
+                                            ${isCurrentUser ? '<span class="text-xs bg-purple-600 px-2 py-1 rounded">YOU</span>' : ''}
+                                        </div>
+                                        <div class="text-xs text-gray-400 mt-1">${entry.email}</div>
+                                        <div class="flex gap-3 mt-1 text-xs">
+                                            <span class="text-blue-400">${entry.completedTasks} tasks</span>
+                                            <span class="text-green-400">${entry.referrals} referrals</span>
+                                        </div>
                                     </div>
                                 </div>
                                 <div class="text-right">
-                                    <div class="font-bold">${entry.points} pts</div>
-                                    <div class="text-xs text-gray-400">${entry.referrals} referrals</div>
+                                    <div class="font-bold text-xl text-yellow-400">${entry.points}</div>
+                                    <div class="text-xs text-gray-400">total points</div>
                                 </div>
                             </div>
                         `;
