@@ -27,9 +27,9 @@ function loadData() {
   return {
     users: [],
     tasks: [
-      { id: 'twitter_follow', title: 'Segui CRYPTA VPN su X (Twitter)', points: 50 },
-      { id: 'twitter_post', title: 'Posta e taggaci su X', points: 100 },
-      { id: 'telegram_join', title: 'Unisciti al canale Telegram', points: 75 }
+      { id: 'twitter_follow', title: 'Follow CRYPTA VPN on X (Twitter)', points: 50 },
+      { id: 'twitter_post', title: 'Post and tag us on X', points: 100 },
+      { id: 'telegram_join', title: 'Join Telegram Channel', points: 75 }
     ]
   };
 }
@@ -37,9 +37,9 @@ function loadData() {
 function saveData() {
   try {
     fs.writeFileSync(DATA_FILE, JSON.stringify(memoryDB, null, 2));
-    console.log('💾 Dati salvati su file');
+    console.log('💾 Data saved to file');
   } catch (error) {
-    console.error('Errore salvataggio dati:', error);
+    console.error('Error saving data:', error);
   }
 }
 
@@ -71,13 +71,20 @@ function isValidEmail(email) {
   return email && email.includes('@') && email.includes('.');
 }
 
-// 🔐 NUOVO ENDPOINT: Login utente esistente
+// Calculate total points for a user
+function calculateTotalPoints(user) {
+  const taskPoints = (user.completedTasks || []).reduce((sum, task) => sum + task.points, 0);
+  const referralPoints = (user.referralCount || 0) * 150;
+  return taskPoints + referralPoints;
+}
+
+// 🔐 Login existing user
 app.post("/api/referral/user/login", async (req, res) => {
   try {
     const { username, email } = req.body;
     
     if (!username && !email) {
-      return res.json({ success: false, error: "Inserisci username o email" });
+      return res.json({ success: false, error: "Please enter username or email" });
     }
 
     let user;
@@ -88,42 +95,46 @@ app.post("/api/referral/user/login", async (req, res) => {
     }
 
     if (!user) {
-      return res.json({ success: false, error: "Utente non trovato" });
+      return res.json({ success: false, error: "User not found" });
     }
 
-    // Aggiorna ultima attività
+    // Update last activity
     user.lastActive = new Date();
+    
+    // Calculate total points
+    user.totalPoints = calculateTotalPoints(user);
+    
     saveData();
 
-    console.log(`✅ Login effettuato: ${user.username}`);
+    console.log(`✅ User logged in: ${user.username}`);
     res.json({ success: true, user });
     
   } catch (error) {
-    console.error('Errore login:', error);
-    res.json({ success: false, error: "Errore interno del server" });
+    console.error('Login error:', error);
+    res.json({ success: false, error: "Internal server error" });
   }
 });
 
-// 📝 ENDPOINT: Registrazione (modificato)
+// 📝 User registration
 app.post("/api/referral/user/register", async (req, res) => {
   try {
     const { username, email, telegram, referredBy } = req.body;
     
     if (!username || !email) {
-      return res.json({ success: false, error: "Username e email richiesti" });
+      return res.json({ success: false, error: "Username and email are required" });
     }
 
     if (!isValidEmail(email)) {
-      return res.json({ success: false, error: "Inserisci un'email valida" });
+      return res.json({ success: false, error: "Please enter a valid email" });
     }
 
-    // Verifica se l'utente esiste già
+    // Check if user already exists
     const existingUser = findUserByUsername(username) || findUserByEmail(email);
     if (existingUser) {
       return res.json({ 
         success: false, 
-        error: "Utente già registrato",
-        suggestion: "Usa la funzione di login" 
+        error: "User already registered",
+        suggestion: "Use the login function" 
       });
     }
 
@@ -149,72 +160,140 @@ app.post("/api/referral/user/register", async (req, res) => {
       const referrer = findUserByReferralCode(referredBy);
       if (referrer) {
         referrer.referralCount += 1;
-        referrer.points += 150;
         referrer.referrals.push({ username, email, joinedAt: new Date() });
         saveData();
       }
     }
 
-    console.log(`✅ Nuovo utente: ${username} (${email})`);
+    // Calculate total points for response
+    newUser.totalPoints = calculateTotalPoints(newUser);
+
+    console.log(`✅ New user: ${username} (${email})`);
     res.json({ success: true, user: newUser });
     
   } catch (error) {
-    console.error('Errore registrazione:', error);
-    res.json({ success: false, error: "Errore interno del server" });
+    console.error('Registration error:', error);
+    res.json({ success: false, error: "Internal server error" });
   }
 });
 
-// ✅ NUOVO ENDPOINT: Verifica automatica task completate
+// ✅ Task verification (SIMULATED - you'll need real API integration)
 app.post("/api/referral/task/verify", async (req, res) => {
   try {
     const { username, taskId } = req.body;
     
     const user = findUserByUsername(username);
     if (!user) {
-      return res.json({ success: false, error: "Utente non trovato" });
+      return res.json({ success: false, error: "User not found" });
     }
 
-    // Verifica se il task è già completato
+    // Check if task is already completed
     const alreadyCompleted = user.completedTasks.some(task => task.taskId === taskId);
     if (alreadyCompleted) {
-      return res.json({ success: false, error: "Task già completata" });
+      return res.json({ success: false, error: "Task already completed" });
     }
 
-    // Trova il task per i punti
+    // Find the task for points
     const task = memoryDB.tasks.find(t => t.id === taskId);
     if (!task) {
-      return res.json({ success: false, error: "Task non trovata" });
+      return res.json({ success: false, error: "Task not found" });
     }
 
-    // 🔍 QUI ANDREBBE LA LOGICA DI VERIFICA REALE
-    // Per ora simuliamo verifica positiva dopo 3 secondi
+    // 🔍 REAL VERIFICATION LOGIC WOULD GO HERE
+    // For now, we simulate verification with 80% success rate
+    const isVerified = Math.random() > 0.2; // 80% success rate
+    
     setTimeout(() => {
-      user.completedTasks.push({
-        taskId,
-        points: task.points,
-        completedAt: new Date(),
-        verified: true
-      });
-      user.points += task.points;
-      user.lastActive = new Date();
-      saveData();
+      if (isVerified) {
+        user.completedTasks.push({
+          taskId,
+          points: task.points,
+          completedAt: new Date(),
+          verified: true,
+          verifiedAt: new Date()
+        });
+        
+        // Update total points
+        user.totalPoints = calculateTotalPoints(user);
+        user.lastActive = new Date();
+        saveData();
 
-      console.log(`✅ Task verificata: ${username} - ${taskId} (+${task.points} pts)`);
-      res.json({ 
-        success: true, 
-        user,
-        points: task.points,
-        message: `Task completata! +${task.points} punti!` 
-      });
-    }, 3000);
+        console.log(`✅ Task verified: ${username} - ${taskId} (+${task.points} pts)`);
+        res.json({ 
+          success: true, 
+          user,
+          points: task.points,
+          message: `Task completed! +${task.points} points!` 
+        });
+      } else {
+        res.json({ 
+          success: false, 
+          error: "Task not completed yet. Please make sure you completed the action and try again." 
+        });
+      }
+    }, 2000); // 2 second delay to simulate verification
     
   } catch (error) {
-    console.error('Errore verifica task:', error);
-    res.json({ success: false, error: "Errore interno del server" });
+    console.error('Task verification error:', error);
+    res.json({ success: false, error: "Internal server error" });
   }
 });
 
-// ... [MANTIENI TUTTI GLI ALTRI ENDPOINT ESISTENTI] ...
+// 📊 Leaderboard with total points
+app.get("/api/referral/leaderboard", async (req, res) => {
+  try {
+    const limit = parseInt(req.query.limit) || 10;
+    
+    // Calculate total points for all users and sort
+    const leaderboard = memoryDB.users
+      .map(user => ({
+        ...user,
+        totalPoints: calculateTotalPoints(user)
+      }))
+      .sort((a, b) => b.totalPoints - a.totalPoints)
+      .slice(0, limit)
+      .map((user, index) => ({
+        username: user.username,
+        points: user.totalPoints,
+        referralCount: user.referralCount || 0,
+        taskPoints: (user.completedTasks || []).reduce((sum, task) => sum + task.points, 0),
+        referralPoints: (user.referralCount || 0) * 150,
+        rank: index + 1
+      }));
+
+    res.json({ success: true, leaderboard });
+    
+  } catch (error) {
+    console.error('Leaderboard error:', error);
+    res.json({ success: false, error: "Internal server error" });
+  }
+});
+
+// 🔍 ADMIN: Get all data with total points
+app.get("/api/admin/data", (req, res) => {
+  try {
+    const usersWithTotals = memoryDB.users.map(user => ({
+      ...user,
+      totalPoints: calculateTotalPoints(user),
+      taskPoints: (user.completedTasks || []).reduce((sum, task) => sum + task.points, 0),
+      referralPoints: (user.referralCount || 0) * 150
+    })).sort((a, b) => b.totalPoints - a.totalPoints);
+
+    const stats = {
+      total_users: memoryDB.users.length,
+      total_points: usersWithTotals.reduce((sum, user) => sum + user.totalPoints, 0),
+      total_referrals: memoryDB.users.reduce((sum, user) => sum + (user.referralCount || 0), 0),
+      total_completed_tasks: memoryDB.users.reduce((sum, user) => sum + (user.completedTasks || []).length, 0),
+      users: usersWithTotals
+    };
+    
+    res.json({ success: true, data: stats });
+  } catch (error) {
+    res.json({ success: false, error: error.message });
+  }
+});
+
+// ... [REST OF YOUR ADMIN ENDPOINTS] ...
 
 // Health check
 app.get("/api/health", (req, res) => {
@@ -227,21 +306,20 @@ app.get("/api/health", (req, res) => {
   });
 });
 
-// 🎯 PAGINA ADMIN
+// 🎯 ADMIN PAGE
 app.get("/admin", (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'admin.html'));
 });
 
-// Serve frontend principale
+// Serve main frontend
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
-// Avvio server
+// Start server
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`🚀 Server CRYPTA avviato su porta ${PORT}`);
+  console.log(`🚀 CRYPTA Server started on port ${PORT}`);
   console.log(`🌐 Dashboard: https://crypta-referal.onrender.com`);
   console.log(`👑 Admin Panel: https://crypta-referal.onrender.com/admin`);
-  console.log(`🔐 Nuovo: Sistema di login e verifica task automatica`);
-  console.log(`📊 Utenti registrati: ${memoryDB.users.length}`);
+  console.log(`📊 Registered users: ${memoryDB.users.length}`);
 });
